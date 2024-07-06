@@ -1,10 +1,8 @@
+import { Dayjs } from "dayjs";
+
 export type Time = {
-  start: {
-    hour: string;
-    minute: string;
-  };
-  end: {
-    hour: string;
-    minute: string;
-  };
+  start: Dayjs | null;
+  end: Dayjs | null;
 };
+
+export type Type = "default" | "fullLeave" | "halfLeave";

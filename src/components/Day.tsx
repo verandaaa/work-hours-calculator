@@ -1,5 +1,6 @@
-import { Time } from "@/model/type";
 import useStore from "@/store/useStore";
+import { MenuItem, Select } from "@mui/material";
+import { TimeField } from "@mui/x-date-pickers";
 
 type Props = {
   label: string;
@@ -7,75 +8,71 @@ type Props = {
 };
 
 type Key = "start" | "end";
-type SubKey = "hour" | "minute";
 
 export default function Day({ label, index }: Props) {
-  const { setTimes, times, types, getPlusMinus } = useStore();
+  const { setTimes, times, types, setTypes, getPlusMinus } = useStore();
   const plusMinus = getPlusMinus(index);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    const [key, subKey] = name.split("-") as [Key, SubKey];
+  const handleTimeChange = (newValue: any, context: any, key: Key) => {
+    if (context.validationError) {
+      return;
+    }
     const updatedTime = { ...times[index] };
-    updatedTime[key][subKey] = value;
+    updatedTime[key] = newValue;
     setTimes(index, updatedTime);
     localStorage.setItem(`day-${index}`, JSON.stringify(updatedTime));
   };
 
+  const handleTypeChange = (event: any) => {
+    const newType = event.target.value;
+
+    if (newType === "fullLeave") {
+      setTimes(index, { start: null, end: null });
+      localStorage.removeItem(`day-${index}`);
+    }
+    const updatedTypes = { ...types };
+    updatedTypes[index] = newType;
+    setTypes(index, newType);
+    localStorage.setItem("types", JSON.stringify(updatedTypes));
+  };
+
   return (
-    <div className="flex gap-4 my-4">
+    <div className="flex gap-5 my-4 items-center">
       <div>{label}</div>
-      <div className="flex gap-4">
+      <div className="flex gap-2 items-center">
         <div>
-          <input
-            type="text"
-            value={times[index].start.hour}
-            maxLength={2}
-            placeholder="HH"
-            name="start-hour"
-            onChange={handleInputChange}
-            className="w-10"
-            autoComplete="off"
-          />
-          <input
-            type="text"
-            value={times[index].start.minute}
-            maxLength={2}
-            placeholder="MM"
-            name="start-minute"
-            onChange={handleInputChange}
-            className="w-10"
-            autoComplete="off"
+          <TimeField
+            format="HH:mm"
+            value={times[index].start}
+            onChange={(newValue, context) => handleTimeChange(newValue, context, "start")}
+            disabled={types[index] === "fullLeave"}
+            className="w-[76px]"
+            size="small"
           />
         </div>
         <div>~</div>
         <div>
-          <input
-            type="text"
-            value={times[index].end.hour}
-            maxLength={2}
-            placeholder="HH"
-            name="end-hour"
-            onChange={handleInputChange}
-            className="w-10"
-            autoComplete="off"
-          />
-          <input
-            type="text"
-            value={times[index].end.minute}
-            maxLength={2}
-            placeholder="MM"
-            name="end-minute"
-            onChange={handleInputChange}
-            className="w-10"
-            autoComplete="off"
+          <TimeField
+            format="HH:mm"
+            value={times[index].end}
+            onChange={(newValue, context) => handleTimeChange(newValue, context, "end")}
+            disabled={types[index] === "fullLeave"}
+            className="w-[76px]"
+            size="small"
           />
         </div>
-        <div>{types[index]}</div>
-        <div className={""}>
-          {plusMinus >= 0 ? "+" : ""}
-          {plusMinus}
-        </div>
+      </div>
+      <div>
+        <Select value={types[index]} onChange={handleTypeChange} size="small">
+          <MenuItem value={"default"}>근무</MenuItem>
+          <MenuItem value={"fullLeave"}>연차</MenuItem>
+          <MenuItem value={"halfLeave"}>반차</MenuItem>
+        </Select>
+      </div>
+      <div className="">
+        {plusMinus === 0 && <span className="text-black">0</span>}
+        {plusMinus > 0 && <span className="text-green-600">{"+" + plusMinus}</span>}
+        {plusMinus < 0 && <span className="text-red-600">{plusMinus}</span>}
       </div>
     </div>
   );

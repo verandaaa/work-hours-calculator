@@ -1,32 +1,36 @@
 import { create } from "zustand";
-import { Time } from "@/model/type";
+import { Time, Type } from "@/model/type";
 
 type StoreState = {
   times: Time[];
-  types: "default"[];
+  types: Type[];
   setTimes: (index: number, newTime: Time) => void;
+  setTypes: (index: number, type: Type) => void;
   getWorkTime: () => string;
   initTimes: (times: Time[]) => void;
+  initTypes: (types: Type[]) => void;
   getPlusMinus: (index: number) => number;
+  getTargetTime: () => number;
 };
 
-const typeInfos = { default: { restTime: 60, workTime: 480 } };
+const typeInfos = {
+  default: { restTime: 60, workTime: 480 },
+  fullLeave: { restTime: 0, leaveHour: 8 },
+  halfLeave: { restTime: 30, workTime: 240, leaveHour: 4 },
+};
 
 const useStore = create<StoreState>((set, get) => {
   const getDiff = (index: number) => {
-    if (
-      get().times[index].start.hour === "" ||
-      get().times[index].start.minute === "" ||
-      get().times[index].end.hour === "" ||
-      get().times[index].end.minute === ""
-    ) {
+    const time = get().times[index];
+
+    if (time.start === null || time.end === null) {
       return 0;
     }
 
-    const startHour = parseInt(get().times[index].start.hour);
-    const startMinute = parseInt(get().times[index].start.minute);
-    const endHour = parseInt(get().times[index].end.hour);
-    const endMinute = parseInt(get().times[index].end.minute);
+    const startHour = time.start.hour();
+    const startMinute = time.start.minute();
+    const endHour = time.end.hour();
+    const endMinute = time.end.minute();
 
     const startTimeInMinutes = startHour * 60 + startMinute;
     const endTimeInMinutes = endHour * 60 + endMinute;
@@ -38,17 +42,22 @@ const useStore = create<StoreState>((set, get) => {
 
   return {
     times: [],
-    types: ["default", "default", "default", "default", "default"],
+    types: [],
     setTimes: (index, newTime) =>
       set((state) => ({
         times: state.times.map((time, i) => (i === index ? newTime : time)),
       })),
+    setTypes: (index, newType) =>
+      set((state) => ({
+        types: state.types.map((type, i) => (i === index ? newType : type)),
+      })),
     getPlusMinus: (index: number) => {
       const diff = getDiff(index);
-      if (diff === 0) {
+      const type = get().types[index];
+      if (diff === 0 || type === "fullLeave") {
         return 0;
       }
-      const todayTotalTime = diff - typeInfos[get().types[index]].workTime - typeInfos[get().types[index]].restTime;
+      const todayTotalTime = diff - typeInfos[type].workTime - typeInfos[type].restTime;
 
       return todayTotalTime;
     },
@@ -77,7 +86,21 @@ const useStore = create<StoreState>((set, get) => {
 
       return result;
     },
+    getTargetTime: () => {
+      const initialTargetTime = 40;
+      const types = get().types;
+
+      const targetTime = types.reduce((acc, type) => {
+        if (type === "fullLeave" || type === "halfLeave") {
+          return acc - typeInfos[type].leaveHour;
+        }
+        return acc;
+      }, initialTargetTime);
+
+      return targetTime;
+    },
     initTimes: (times: Time[]) => set({ times: times }),
+    initTypes: (types: Type[]) => set({ types: types }),
   };
 });
 
