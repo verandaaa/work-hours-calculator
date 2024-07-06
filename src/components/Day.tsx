@@ -37,9 +37,9 @@ export default function Day({ label, index }: Props) {
   };
 
   return (
-    <div className="flex gap-5 my-4 items-center">
+    <div className="flex gap-3 my-4 items-center">
       <div>{label}</div>
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-1 items-center">
         <div>
           <TimeField
             format="HH:mm"
@@ -69,7 +69,7 @@ export default function Day({ label, index }: Props) {
           <MenuItem value={"halfLeave"}>반차</MenuItem>
         </Select>
       </div>
-      <div className="">
+      <div className="flex justify-center flex-1">
         {plusMinus === 0 && <span className="text-black">0</span>}
         {plusMinus > 0 && <span className="text-green-600">{"+" + plusMinus}</span>}
         {plusMinus < 0 && <span className="text-red-600">{plusMinus}</span>}

@@ -19,7 +19,7 @@ export default function Home() {
     if (localStorage.getItem("lastAccessWeek")) {
       let lastAccessWeek = Number(localStorage.getItem("lastAccessWeek"));
       let currentWeek = dayjs().week();
-      if (lastAccessWeek < currentWeek) {
+      if (lastAccessWeek < currentWeek || (currentWeek === 0 && lastAccessWeek !== 0)) {
         localStorage.clear();
       }
     } else {
@@ -58,10 +58,10 @@ export default function Home() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <main className="flex justify-center max-w-md w-full h-screen bg-white">
+      <main className="flex justify-center max-w-md w-full h-screen">
         <div className="flex flex-col items-center gap-8 justify-center">
           <div className="text-2xl">근무 시간 계산기</div>
-          <div>
+          <div className="min-h-[296px]">
             {times.map((time, index) => (
               <Day label={days[index]} index={index} key={index} />
             ))}
