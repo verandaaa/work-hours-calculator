@@ -46,7 +46,7 @@ export default function Day({ label, index }: Props) {
             value={times[index].start}
             onChange={(newValue, context) => handleTimeChange(newValue, context, "start")}
             disabled={types[index] === "fullLeave"}
-            className="w-[76px]"
+            className="w-[78px]"
             size="small"
           />
         </div>
@@ -57,7 +57,7 @@ export default function Day({ label, index }: Props) {
             value={times[index].end}
             onChange={(newValue, context) => handleTimeChange(newValue, context, "end")}
             disabled={types[index] === "fullLeave"}
-            className="w-[76px]"
+            className="w-[78px]"
             size="small"
           />
         </div>

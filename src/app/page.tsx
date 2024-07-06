@@ -7,13 +7,26 @@ import { Time, Type } from "@/model/type";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
+import weekOfYear from "dayjs/plugin/weekOfYear";
 
 const days = ["월", "화", "수", "목", "금"];
+dayjs.extend(weekOfYear);
 
 export default function Home() {
   const { times, getWorkTime, initTimes, getTargetTime, initTypes } = useStore();
 
   useEffect(() => {
+    if (localStorage.getItem("lastAccessWeek")) {
+      let lastAccessWeek = Number(localStorage.getItem("lastAccessWeek"));
+      let currentWeek = dayjs().week();
+      if (lastAccessWeek < currentWeek) {
+        localStorage.clear();
+      }
+    } else {
+      localStorage.clear();
+    }
+    localStorage.setItem("lastAccessWeek", JSON.stringify(dayjs().week()));
+
     let times: Time[] = [];
     days.forEach((_, index) => {
       const storedTime = localStorage.getItem(`day-${index}`);
@@ -33,7 +46,7 @@ export default function Home() {
       }
     });
 
-    let types: Type[] = [];
+    let types: Type[] = ["default", "default", "default", "default", "default"];
     const storedTypes = localStorage.getItem("types");
     if (storedTypes) {
       types = Object.values(JSON.parse(storedTypes));
