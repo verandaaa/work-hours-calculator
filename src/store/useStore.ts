@@ -10,6 +10,7 @@ type StoreState = {
   initTimes: (times: Time[]) => void;
   initTypes: (types: Type[]) => void;
   getPlusMinus: (index: number) => number;
+  getTotalPlusMinus: () => number;
   getTargetTime: () => number;
 };
 
@@ -60,6 +61,13 @@ const useStore = create<StoreState>((set, get) => {
       const todayTotalTime = diff - typeInfos[type].workTime - typeInfos[type].restTime;
 
       return todayTotalTime;
+    },
+    getTotalPlusMinus: () => {
+      const totalPlusMinus = get().times.reduce((total, _, index) => {
+        return total + get().getPlusMinus(index);
+      }, 0);
+
+      return totalPlusMinus;
     },
     getWorkTime: () => {
       const totalTime = get().times.reduce((total, _, index) => {

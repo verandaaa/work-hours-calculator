@@ -13,7 +13,8 @@ const days = ["월", "화", "수", "목", "금"];
 dayjs.extend(weekOfYear);
 
 export default function Home() {
-  const { times, getWorkTime, initTimes, getTargetTime, initTypes } = useStore();
+  const { times, getWorkTime, initTimes, getTargetTime, initTypes, getTotalPlusMinus } = useStore();
+  const totalPlusMinus = getTotalPlusMinus();
 
   useEffect(() => {
     if (localStorage.getItem("lastAccessWeek")) {
@@ -65,6 +66,10 @@ export default function Home() {
             {times.map((time, index) => (
               <Day label={days[index]} index={index} key={index} />
             ))}
+          </div>
+          <div>
+            {totalPlusMinus > 0 ? "+" : ""}
+            {totalPlusMinus}분
           </div>
           <div>{getWorkTime()}</div>
           <div>이번 주 목표 : {getTargetTime()}시간</div>
