@@ -5,4 +5,10 @@ export type Time = {
   end: Dayjs | null;
 };
 
-export type Type = "default" | "fullLeave" | "halfLeave";
+export type Type =
+  | "default"
+  | "fullLeave"
+  | "halfLeave"
+  | "quarterLeave"
+  | "freeDinner"
+  | "refreshDay";

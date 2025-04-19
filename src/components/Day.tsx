@@ -37,14 +37,16 @@ export default function Day({ label, index }: Props) {
   };
 
   return (
-    <div className="flex gap-3 my-4 items-center">
+    <div className="flex gap-2 my-4 items-center">
       <div>{label}</div>
       <div className="flex gap-1 items-center">
         <div>
           <TimeField
             format="HH:mm"
             value={times[index].start}
-            onChange={(newValue, context) => handleTimeChange(newValue, context, "start")}
+            onChange={(newValue, context) =>
+              handleTimeChange(newValue, context, "start")
+            }
             disabled={types[index] === "fullLeave"}
             className="w-[78px]"
             size="small"
@@ -55,23 +57,35 @@ export default function Day({ label, index }: Props) {
           <TimeField
             format="HH:mm"
             value={times[index].end}
-            onChange={(newValue, context) => handleTimeChange(newValue, context, "end")}
+            onChange={(newValue, context) =>
+              handleTimeChange(newValue, context, "end")
+            }
             disabled={types[index] === "fullLeave"}
             className="w-[78px]"
             size="small"
           />
         </div>
       </div>
-      <div>
-        <Select value={types[index]} onChange={handleTypeChange} size="small">
+      <div className="w-[80px]">
+        <Select
+          value={types[index]}
+          onChange={handleTypeChange}
+          size="small"
+          fullWidth
+        >
           <MenuItem value={"default"}>근무</MenuItem>
           <MenuItem value={"fullLeave"}>연차</MenuItem>
           <MenuItem value={"halfLeave"}>반차</MenuItem>
+          <MenuItem value={"quarterLeave"}>반반차</MenuItem>
+          <MenuItem value={"freeDinner"}>저녁</MenuItem>
+          <MenuItem value={"refreshDay"}>리프레시데이</MenuItem>
         </Select>
       </div>
       <div className="flex justify-center flex-1">
         {plusMinus === 0 && <span className="text-black">0</span>}
-        {plusMinus > 0 && <span className="text-green-600">{"+" + plusMinus}</span>}
+        {plusMinus > 0 && (
+          <span className="text-green-600">{"+" + plusMinus}</span>
+        )}
         {plusMinus < 0 && <span className="text-red-600">{plusMinus}</span>}
       </div>
     </div>

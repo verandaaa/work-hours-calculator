@@ -14,18 +14,30 @@ type StoreState = {
   getTargetTime: () => number;
 };
 
+//workTime : 목표 근무 시간, freeTime : 근무 인정 시간, restTime : 고정 휴게 시간
 const typeInfos = {
-  default: { restTime: 60, workTime: 480 },
-  fullLeave: { restTime: 0, leaveHour: 8 },
-  halfLeave: { restTime: 30, workTime: 240, leaveHour: 4 },
+  default: { workTime: 480, freeTime: 0, restTime: 0 },
+  fullLeave: { workTime: 480, freeTime: 480, restTime: 0 },
+  halfLeave: { workTime: 480, freeTime: 240, restTime: 0 },
+  quarterLeave: { workTime: 480, freeTime: 120, restTime: 0 },
+  freeDinner: { workTime: 600, freeTime: 0, restTime: 30 },
+  refreshDay: { workTime: 480, freeTime: 240, restTime: 0 },
 };
 
 const useStore = create<StoreState>((set, get) => {
   const getDiff = (index: number) => {
     const time = get().times[index];
+    const type = get().types[index];
 
+    if (type === "fullLeave") {
+      return {
+        total: typeInfos[type].freeTime,
+        work: typeInfos[type].freeTime,
+        rest: 0,
+      };
+    }
     if (time.start === null || time.end === null) {
-      return 0;
+      return { total: 0, work: 0, rest: 0 };
     }
 
     const startHour = time.start.hour();
@@ -36,9 +48,29 @@ const useStore = create<StoreState>((set, get) => {
     const startTimeInMinutes = startHour * 60 + startMinute;
     const endTimeInMinutes = endHour * 60 + endMinute;
 
-    const diff = endTimeInMinutes - startTimeInMinutes;
+    const total =
+      endTimeInMinutes - startTimeInMinutes + typeInfos[type].freeTime;
 
-    return diff;
+    const lunchStartTimeInMinutes = 12 * 60 + 0;
+    const lunchEndTimeInMinutes = 13 * 60 + 0;
+
+    let restTime = typeInfos[type].restTime;
+    if (
+      endTimeInMinutes <= lunchStartTimeInMinutes ||
+      startTimeInMinutes >= lunchEndTimeInMinutes
+    ) {
+      //
+    } else {
+      const overlapStart = Math.max(
+        startTimeInMinutes,
+        lunchStartTimeInMinutes
+      );
+      const overlapEnd = Math.min(endTimeInMinutes, lunchEndTimeInMinutes);
+      restTime += overlapEnd - overlapStart;
+    }
+    const work = total - restTime;
+
+    return { total: total, work: work, rest: restTime };
   };
 
   return {
@@ -53,12 +85,15 @@ const useStore = create<StoreState>((set, get) => {
         types: state.types.map((type, i) => (i === index ? newType : type)),
       })),
     getPlusMinus: (index: number) => {
-      const diff = getDiff(index);
+      const { work } = getDiff(index);
       const type = get().types[index];
-      if (diff === 0 || type === "fullLeave") {
+      if (type === "fullLeave") {
         return 0;
       }
-      const todayTotalTime = diff - typeInfos[type].workTime - typeInfos[type].restTime;
+      if (work === 0) {
+        return 0;
+      }
+      const todayTotalTime = work - typeInfos[type].workTime;
 
       return todayTotalTime;
     },
@@ -70,42 +105,38 @@ const useStore = create<StoreState>((set, get) => {
       return totalPlusMinus;
     },
     getWorkTime: () => {
-      const totalTime = get().times.reduce((total, _, index) => {
-        total += getDiff(index);
+      let totalTime = 0;
+      let workTime = 0;
+      let restTime = 0;
 
-        return total;
-      }, 0);
+      get().times.forEach((time, index) => {
+        const { total, work, rest } = getDiff(index);
+        totalTime += total;
+        workTime += work;
+        restTime += rest;
+      });
 
-      const restTime = get().times.reduce((total, _, index) => {
-        const diff = getDiff(index);
-        if (diff === 0) {
-          return total;
-        }
-        total += typeInfos[get().types[index]]["restTime"];
-        return total;
-      }, 0);
-
-      const workTime = totalTime - restTime;
-
-      const totalTimeFormatted = `${Math.floor(totalTime / 60)}시간 ${totalTime % 60}분`;
-      const restTimeFormatted = `${Math.floor(restTime / 60)}시간 ${restTime % 60}분`;
-      const workTimeFormatted = `${Math.floor(workTime / 60)}시간 ${workTime % 60}분`;
+      const totalTimeFormatted = `${Math.floor(totalTime / 60)}시간 ${
+        totalTime % 60
+      }분`;
+      const restTimeFormatted = `${Math.floor(restTime / 60)}시간 ${
+        restTime % 60
+      }분`;
+      const workTimeFormatted = `${Math.floor(workTime / 60)}시간 ${
+        workTime % 60
+      }분`;
       const result = `${totalTimeFormatted} - ${restTimeFormatted} = ${workTimeFormatted}`;
 
       return result;
     },
     getTargetTime: () => {
-      const initialTargetTime = 40;
       const types = get().types;
 
       const targetTime = types.reduce((acc, type) => {
-        if (type === "fullLeave" || type === "halfLeave") {
-          return acc - typeInfos[type].leaveHour;
-        }
-        return acc;
-      }, initialTargetTime);
+        return acc + typeInfos[type].workTime;
+      }, 0);
 
-      return targetTime;
+      return targetTime / 60;
     },
     initTimes: (times: Time[]) => set({ times: times }),
     initTypes: (types: Type[]) => set({ types: types }),
