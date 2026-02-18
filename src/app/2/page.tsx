@@ -144,9 +144,9 @@ const timeFieldSx = {
 };
 
 const breakTimeFieldSx = {
-  width: 68,
+  width: 64,
   "& .MuiInputBase-root": { padding: 0, borderRadius: "6px" },
-  "& input": { fontSize: 12, padding: "3px 6px", textAlign: "center" },
+  "& input": { fontSize: 13, padding: "4px 6px", textAlign: "center" },
 };
 
 const SELECT_TYPE_STYLES: Record<
@@ -163,13 +163,17 @@ const SELECT_TYPE_STYLES: Record<
 const getSelectSx = (type: string) => {
   const s = SELECT_TYPE_STYLES[type] ?? SELECT_TYPE_STYLES.work;
   return {
-    width: 68,
+    width: 64,
     fontSize: 13,
     fontWeight: 500,
     borderRadius: "6px",
     color: s.color,
     bgcolor: s.bg,
-    "& .MuiSelect-select": { padding: "5px 8px" },
+    "&.MuiInputBase-root": { margin: "0 2px" },
+    "& .MuiSelect-select": {
+      padding: "5px 8px",
+      paddingRight: "24px !important",
+    },
     "& .MuiSelect-icon": { right: 2, color: s.color },
     "& .MuiOutlinedInput-notchedOutline": s.border
       ? { borderColor: s.border }
