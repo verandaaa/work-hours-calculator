@@ -1,80 +1,87 @@
 "use client";
 
-import Day from "@/components/Day";
-import { useEffect } from "react";
-import useStore from "@/store/useStore";
-import { Time, Type } from "@/model/type";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import weekOfYear from "dayjs/plugin/weekOfYear";
+import { routes } from "@/lib/routes";
+import Link from "next/link";
 
-const days = ["월", "화", "수", "목", "금"];
 dayjs.extend(weekOfYear);
 
 export default function Home() {
-  const { times, getWorkTime, initTimes, getTargetTime, initTypes, getTotalPlusMinus } = useStore();
-  const totalPlusMinus = getTotalPlusMinus();
-
-  useEffect(() => {
-    if (localStorage.getItem("lastAccessWeek")) {
-      let lastAccessWeek = Number(localStorage.getItem("lastAccessWeek"));
-      let currentWeek = dayjs().week();
-      if (lastAccessWeek < currentWeek || (currentWeek === 0 && lastAccessWeek !== 0)) {
-        localStorage.clear();
-      }
-    } else {
-      localStorage.clear();
-    }
-    localStorage.setItem("lastAccessWeek", JSON.stringify(dayjs().week()));
-
-    let times: Time[] = [];
-    days.forEach((_, index) => {
-      const storedTime = localStorage.getItem(`day-${index}`);
-      if (storedTime) {
-        const start = JSON.parse(storedTime).start ? dayjs(JSON.parse(storedTime).start) : null;
-        const end = JSON.parse(storedTime).end ? dayjs(JSON.parse(storedTime).end) : null;
-
-        times.push({
-          start: start,
-          end: end,
-        });
-      } else {
-        times.push({
-          start: null,
-          end: null,
-        });
-      }
-    });
-
-    let types: Type[] = ["default", "default", "default", "default", "default"];
-    const storedTypes = localStorage.getItem("types");
-    if (storedTypes) {
-      types = Object.values(JSON.parse(storedTypes));
-    }
-
-    initTimes(times);
-    initTypes(types);
-  }, []);
-
   return (
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <main className="flex justify-center max-w-md w-full h-screen">
-        <div className="flex flex-col items-center gap-8 justify-center">
-          <div className="text-2xl">근무 시간 계산기</div>
-          <div className="min-h-[296px]">
-            {times.map((time, index) => (
-              <Day label={days[index]} index={index} key={index} />
-            ))}
+    <div className="min-h-screen bg-gray-100 flex items-center justify-center px-4 w-full max-w-md">
+      <main>
+        {/* Header */}
+        <div className="mb-10 text-center">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-indigo-600 mb-4">
+            <svg
+              className="w-6 h-6 text-white"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
           </div>
-          <div>
-            {totalPlusMinus > 0 ? "+" : ""}
-            {totalPlusMinus}분
-          </div>
-          <div>{getWorkTime()}</div>
-          <div>이번 주 목표 : {getTargetTime()}시간</div>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
+            근무 시간 계산기
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            원하는 계산 유형을 선택하세요
+          </p>
+        </div>
+
+        {/* Nav Cards */}
+        <nav className="flex flex-col gap-3">
+          {routes.map(({ href, label }, i) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-gray-200 shadow-sm hover:border-indigo-400 hover:shadow-md transition-all duration-200"
+            >
+              <div className="flex items-center gap-3">
+                <span className="flex items-center justify-center w-7 h-7 rounded-full bg-indigo-50 text-indigo-600 text-xs font-semibold group-hover:bg-indigo-100 transition-colors">
+                  {i + 1}
+                </span>
+                <span className="text-sm font-medium text-gray-800 group-hover:text-indigo-600 transition-colors">
+                  {label}
+                </span>
+              </div>
+              <svg
+                className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 5l7 7-7 7"
+                />
+              </svg>
+            </Link>
+          ))}
+        </nav>
+
+        {/* Footer */}
+        <div className="mt-10 flex justify-center">
+          <Link
+            href="https://github.com/verandaaa/work-hours-calculator"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-700 transition-colors"
+          >
+            <img src="/github.svg" alt="github" className="w-4 h-4" />
+            <span>GitHub</span>
+          </Link>
         </div>
       </main>
-    </LocalizationProvider>
+    </div>
   );
 }
