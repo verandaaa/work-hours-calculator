@@ -12,6 +12,7 @@ import { TimeField } from "@mui/x-date-pickers/TimeField";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
+import { Info } from "lucide-react";
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
@@ -200,7 +201,7 @@ const GUIDE_CONTENT = {
     },
     {
       title: "합산 기준",
-      desc: "실근로 + 연차 등 보너스 시간을 합산해 월 기준 시간 달성 여부를 계산합니다.",
+      desc: "실근로 + 기타(연차·반차·반반차·휴일) 시간을 합산해 월 기준 시간 달성 여부를 계산합니다.",
     },
     {
       title: "데이터 저장",
@@ -379,6 +380,7 @@ export default function WorkHoursTracker() {
   const [mounted, setMounted] = useState(false);
   const [showInfo, setShowInfo] = useState<"usage" | "patch" | null>(null);
   const [showNewPatch, setShowNewPatch] = useState(false);
+  const [showWeekdayCard, setShowWeekdayCard] = useState(false);
 
   useEffect(() => {
     try {
@@ -502,14 +504,6 @@ export default function WorkHoursTracker() {
     () => Object.values(dayStats).reduce((s, v) => s + v.bonus, 0),
     [dayStats]
   );
-  const diffMinutes = useMemo(
-    () =>
-      Object.values(dayStats).reduce(
-        (s, v) => (v.total > 0 ? s + (v.total - 480) : s),
-        0
-      ),
-    [dayStats]
-  );
 
   const totalHours = totalMinutes / 60;
   const remainMinutes = requiredHours * 60 - totalMinutes;
@@ -518,6 +512,31 @@ export default function WorkHoursTracker() {
     (totalMinutes / (requiredHours * 60)) * 100,
     100
   );
+
+  const workedDayCount = useMemo(
+    () => Object.values(dayStats).filter((s) => s.total > 0).length,
+    [dayStats]
+  );
+  const workedDayStandardHours = workedDayCount * 8;
+  const workdDayVsRequiredDiffMinutes = useMemo(
+    () =>
+      Object.values(dayStats).reduce(
+        (s, v) => (v.total > 0 ? s + (v.total - 480) : s),
+        0
+      ),
+    [dayStats]
+  );
+
+  const weekdayCount = useMemo(() => {
+    let count = 0;
+    for (let d = 1; d <= days; d++) {
+      if (!isWeekend(year, month, d)) count++;
+    }
+    return count;
+  }, [year, month, days]);
+  const weekdayStandardHours = weekdayCount * 8;
+  const weekdayVsRequiredDiffMinutes =
+    (weekdayStandardHours - requiredHours) * 60;
 
   const monthNames = [
     "1월",
@@ -562,18 +581,19 @@ export default function WorkHoursTracker() {
               }}
             />
             <div className="flex justify-between text-sm mt-1.5">
-              <span>✅ 합산시간 : {minutesToHHMM(totalMinutes)}</span>
+              <span>✅ 누적 시간 : {minutesToHHMM(totalMinutes)}</span>
               <span>
                 {isDone
                   ? "🎉 달성 완료!"
-                  : `⏳ 남은시간 : ${minutesToHHMM(remainMinutes)}`}
+                  : `⏳ 잔여 시간 : ${minutesToHHMM(remainMinutes)}`}
               </span>
             </div>
             <div className="text-center text-sm mt-1">
               <span>
-                {diffMinutes >= 0 ? "📈" : "📉"} 8h 기준 초과/부족 누적 :{" "}
-                {diffMinutes >= 0 ? "+" : "-"}
-                {minutesToHHMM(Math.abs(diffMinutes))}
+                {workdDayVsRequiredDiffMinutes >= 0 ? "📈" : "📉"} 합산
+                초과/부족 시간 :{" "}
+                {workdDayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
+                {minutesToHHMM(Math.abs(workdDayVsRequiredDiffMinutes))}
               </span>
             </div>
           </div>
@@ -581,7 +601,7 @@ export default function WorkHoursTracker() {
           {/* 테이블 */}
           <div className="bg-white rounded-2xl overflow-hidden shadow-sm">
             <div className="grid grid-cols-[44px_1fr_1fr_1fr_34px_48px] px-2 py-3 bg-gray-50 border-b border-gray-200">
-              {["날짜", "출근", "퇴근", "유형", "휴게", "합산"].map((h, i) => (
+              {["날짜", "출근", "퇴근", "유형", "휴게", "결과"].map((h, i) => (
                 <span
                   key={i}
                   className={`text-xs font-bold text-gray-500 ${
@@ -812,7 +832,7 @@ export default function WorkHoursTracker() {
                   cn: "text-blue-600",
                 },
                 {
-                  label: remainMinutes > 0 ? "남은 시간" : "초과 시간",
+                  label: remainMinutes > 0 ? "잔여 시간" : "초과 시간",
                   value: minutesToHHMM(Math.abs(remainMinutes)),
                   cn: "text-red-600",
                 },
@@ -839,7 +859,7 @@ export default function WorkHoursTracker() {
                   cn: "text-purple-700",
                 },
                 {
-                  label: "합산 시간",
+                  label: "누적 시간",
                   value: minutesToHHMM(totalMinutes),
                   cn: "text-orange-600",
                 },
@@ -854,22 +874,61 @@ export default function WorkHoursTracker() {
               ))}
             </div>
             <div className="bg-gray-100 rounded-xl p-3 text-center">
-              <p className="text-[11px] text-gray-500 mb-1">
-                8h 기준 초과/부족 누적
+              <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                합산 여유/부족 시간
+                <span className="relative group cursor-default">
+                  <Info size={12} className="text-gray-500" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed">
+                    {`결과가 존재하는 날은 ${workedDayCount}일이고 하루 8h 근무 시 합계 ${workedDayStandardHours}h 에서 누적 시간과 비교한 결과입니다.`}
+                  </span>
+                </span>
               </p>
               <p
                 className={`text-xl font-bold ${
-                  diffMinutes > 0
+                  workdDayVsRequiredDiffMinutes > 0
                     ? "text-green-600"
-                    : diffMinutes < 0
+                    : workdDayVsRequiredDiffMinutes < 0
                     ? "text-red-600"
                     : "text-gray-900"
                 }`}
               >
-                {diffMinutes >= 0 ? "+" : "-"}
-                {minutesToHHMM(Math.abs(diffMinutes))}
+                {workdDayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
+                {minutesToHHMM(Math.abs(workdDayVsRequiredDiffMinutes))}
               </p>
             </div>
+            <button
+              onClick={() => setShowWeekdayCard((v) => !v)}
+              className="w-full flex items-center justify-center gap-1 py-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              {showWeekdayCard ? "▲ 접기" : "▼ 더보기"}
+            </button>
+            {showWeekdayCard && (
+              <div className="flex flex-col gap-3">
+                <div className="bg-gray-100 rounded-xl p-3 text-center">
+                  <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                    월 계산법 이득/손해 시간
+                    <span className="relative group cursor-default">
+                      <Info size={12} className="text-gray-500" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed">
+                        {`${monthNames[month]}의 평일은 ${weekdayCount}일이고 하루 8h 근무 시 합계 ${weekdayStandardHours}h 에서 기준 시간과 비교한 결과입니다.`}
+                      </span>
+                    </span>
+                  </p>
+                  <p
+                    className={`text-xl font-bold ${
+                      weekdayVsRequiredDiffMinutes > 0
+                        ? "text-green-600"
+                        : weekdayVsRequiredDiffMinutes < 0
+                        ? "text-red-600"
+                        : "text-gray-900"
+                    }`}
+                  >
+                    {weekdayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
+                    {minutesToHHMM(Math.abs(weekdayVsRequiredDiffMinutes))}
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
