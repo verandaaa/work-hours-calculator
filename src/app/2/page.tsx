@@ -538,7 +538,7 @@ export default function WorkHoursTracker() {
 
   return (
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <div className="min-h-screen bg-gray-100 px-4 py-5">
+      <div className="min-h-screen bg-gray-100 px-[6px] py-2">
         <div className="max-w-md mx-auto flex flex-col gap-4">
           {/* 헤더 */}
           <div className="bg-blue-600 rounded-2xl px-7 py-6 text-white shadow-lg">
