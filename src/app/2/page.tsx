@@ -944,7 +944,7 @@ export default function WorkHoursTracker() {
                 {
                   label: "실근로 시간",
                   value: minutesToHHMM(actualWorkedMinutes),
-                  cn: "text-green-600",
+                  cn: "text-orange-600",
                   tooltip: (
                     <>
                       <div className="flex justify-between gap-3">
@@ -1009,7 +1009,7 @@ export default function WorkHoursTracker() {
                 {
                   label: "누적 시간",
                   value: minutesToHHMM(totalMinutes),
-                  cn: "text-orange-600",
+                  cn: "text-green-600",
                   tooltip: (
                     <>
                       <div className="flex justify-between gap-3">
