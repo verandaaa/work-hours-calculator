@@ -924,13 +924,13 @@ export default function WorkHoursTracker() {
               ].map(({ label, value, cn, tooltip }) => (
                 <div
                   key={label}
-                  className="bg-gray-100 rounded-xl p-3 text-center"
+                  className="relative bg-gray-100 rounded-xl p-3 text-center"
                 >
                   <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                     {label}
-                    <span className="relative group cursor-default">
+                    <span className="group cursor-default">
                       <Info size={12} className="text-gray-500" />
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-[150px] bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
                         {tooltip}
                       </span>
                     </span>
@@ -1031,30 +1031,30 @@ export default function WorkHoursTracker() {
               ].map(({ label, value, cn, tooltip }) => (
                 <div
                   key={label}
-                  className="bg-gray-100 rounded-xl p-3 text-center"
+                  className="relative bg-gray-100 rounded-xl p-3 text-center"
                 >
                   <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                     {label}
-                    <span className="relative group cursor-default">
+                    <span className="group cursor-default">
                       <Info size={12} className="text-gray-500" />
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-44 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-[150px] bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
                         {tooltip}
                       </span>
                     </span>
                   </p>
-                  <p className={`text-xl font-bold ${cn}`}>{value}</p>
+                  <p className={`text-2xl font-bold ${cn}`}>{value}</p>
                 </div>
               ))}
             </div>
 
             <hr className="border-gray-200" />
 
-            <div className="bg-gray-100 rounded-xl p-3 text-center">
+            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
               <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                 월 계산법 여유/부족 시간
-                <span className="relative group cursor-default">
+                <span className="group cursor-default">
                   <Info size={12} className="text-gray-500" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
                     <div className="flex justify-between gap-3">
                       <span className="text-gray-300">평일 수</span>
                       <span>{weekdayCount}일</span>
@@ -1102,12 +1102,12 @@ export default function WorkHoursTracker() {
                 {minutesToHHMM(Math.abs(weekdayVsRequiredDiffMinutes))}
               </p>
             </div>
-            <div className="bg-gray-100 rounded-xl p-3 text-center">
+            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
               <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                 하루 기대 시간
-                <span className="relative group cursor-default">
+                <span className="group cursor-default">
                   <Info size={12} className="text-gray-500" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
                     <div className="flex justify-between gap-3">
                       <span className="text-gray-300">기준 시간</span>
                       <span>{minutesToHHMM(requiredMinutes)}</span>
@@ -1131,12 +1131,12 @@ export default function WorkHoursTracker() {
                 {minutesToHHMM(avgDailyRequiredMinutes)}
               </p>
             </div>
-            <div className="bg-gray-100 rounded-xl p-3 text-center">
+            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
               <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                 기대 대비 초과/미달 누적 시간
-                <span className="relative group cursor-default">
+                <span className="group cursor-default">
                   <Info size={12} className="text-gray-500" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
                     <div className="flex justify-between gap-3">
                       <span className="text-gray-300">누적 시간</span>
                       <span>{minutesToHHMM(totalMinutes)}</span>
