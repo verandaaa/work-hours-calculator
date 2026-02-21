@@ -935,7 +935,7 @@ export default function WorkHoursTracker() {
                       </span>
                     </span>
                   </p>
-                  <p className={`text-2xl font-bold ${cn}`}>{value}</p>
+                  <p className={`text-xl font-bold ${cn}`}>{value}</p>
                 </div>
               ))}
             </div>
@@ -1042,7 +1042,7 @@ export default function WorkHoursTracker() {
                       </span>
                     </span>
                   </p>
-                  <p className={`text-2xl font-bold ${cn}`}>{value}</p>
+                  <p className={`text-xl font-bold ${cn}`}>{value}</p>
                 </div>
               ))}
             </div>
