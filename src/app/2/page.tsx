@@ -69,14 +69,6 @@ function saveRecords(y: number, m: number, records: MonthRecords) {
   } catch {}
 }
 
-function cleanOldRecords(currentKey: string) {
-  try {
-    Object.keys(localStorage)
-      .filter((k) => k.startsWith(STORAGE_KEY) && k !== currentKey)
-      .forEach((k) => localStorage.removeItem(k));
-  } catch {}
-}
-
 function getDaysInMonth(y: number, m: number) {
   return new Date(y, m + 1, 0).getDate();
 }
@@ -209,11 +201,16 @@ const GUIDE_CONTENT = {
     },
     {
       title: "데이터 저장",
-      desc: "입력한 데이터는 브라우저에 자동 저장되며, 이전 달 데이터는 자동으로 삭제됩니다.",
+      desc: "입력한 데이터는 브라우저에 자동 저장됩니다.",
     },
   ],
   patches: [
     //위로 추가
+    {
+      version: "v1.1",
+      date: "2026-02-20",
+      changes: ["하루 기대 시간 개념 적용"],
+    },
     {
       version: "v1.0",
       date: "2026-02-18",
@@ -376,15 +373,36 @@ function PatchModal({ onClose }: { onClose: () => void }) {
 
 export default function WorkHoursTracker() {
   const today = new Date();
-  const year = today.getFullYear();
-  const month = today.getMonth();
+
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+
+  const isCurrentMonth =
+    year === today.getFullYear() && month === today.getMonth();
+
+  const goToPrevMonth = () => {
+    if (month === 0) {
+      setYear((y) => y - 1);
+      setMonth(11);
+    } else {
+      setMonth((m) => m - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (month === 11) {
+      setYear((y) => y + 1);
+      setMonth(0);
+    } else {
+      setMonth((m) => m + 1);
+    }
+  };
 
   const [records, setRecords] = useState<MonthRecords>({});
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
   const [showInfo, setShowInfo] = useState<"usage" | "patch" | null>(null);
   const [showNewPatch, setShowNewPatch] = useState(false);
-  const [showWeekdayCard, setShowWeekdayCard] = useState(false);
 
   useEffect(() => {
     try {
@@ -394,9 +412,8 @@ export default function WorkHoursTracker() {
   }, []);
 
   useEffect(() => {
-    const key = storageKey(year, month);
-    cleanOldRecords(key);
     setRecords(loadRecords(year, month));
+    setExpandedDay(null);
     setMounted(true);
   }, [year, month]);
 
@@ -517,19 +534,8 @@ export default function WorkHoursTracker() {
     100
   );
 
-  const workedDayCount = useMemo(
-    () => Object.values(dayStats).filter((s) => s.total > 0).length,
-    [dayStats]
-  );
-  const workedDayStandardHours = workedDayCount * 8;
-  const workdDayVsRequiredDiffMinutes = useMemo(
-    () =>
-      Object.values(dayStats).reduce(
-        (s, v) => (v.total > 0 ? s + (v.total - 480) : s),
-        0
-      ),
-    [dayStats]
-  );
+  //대시보드 추가용
+  const requiredMinutes = requiredHours * 60;
 
   const weekdayCount = useMemo(() => {
     let count = 0;
@@ -538,9 +544,19 @@ export default function WorkHoursTracker() {
     }
     return count;
   }, [year, month, days]);
-  const weekdayStandardHours = weekdayCount * 8;
-  const weekdayVsRequiredDiffMinutes =
-    (weekdayStandardHours - requiredHours) * 60;
+  const weekdayStandardMinutes = weekdayCount * 8 * 60;
+  const weekdayVsRequiredDiffMinutes = weekdayStandardMinutes - requiredMinutes;
+
+  const avgDailyRequiredMinutes = Math.ceil(requiredMinutes / weekdayCount);
+
+  const workedDayCount = useMemo(
+    () => Object.values(dayStats).filter((s) => s.total > 0).length,
+    [dayStats]
+  );
+  const workedDayExpectedMinutes = Math.ceil(
+    requiredMinutes * (workedDayCount / weekdayCount)
+  );
+  const workdDayVsRequiredDiffMinutes = totalMinutes - workedDayExpectedMinutes;
 
   const monthNames = [
     "1월",
@@ -565,9 +581,25 @@ export default function WorkHoursTracker() {
         <div className="max-w-md mx-auto flex flex-col gap-4">
           {/* 헤더 */}
           <div className="bg-blue-600 rounded-2xl px-7 py-6 text-white shadow-lg">
-            <p className="text-center text-xl font-bold">
-              {year}년 {monthNames[month]}
-            </p>
+            <div className="flex items-center justify-between mb-1">
+              <button
+                onClick={goToPrevMonth}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors text-white/80 hover:text-white text-lg"
+              >
+                ‹
+              </button>
+              <div className="text-center">
+                <p className="text-xl font-bold">
+                  {year}년 {monthNames[month]}
+                </p>
+              </div>
+              <button
+                onClick={goToNextMonth}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors text-white/80 hover:text-white text-lg"
+              >
+                ›
+              </button>
+            </div>
             <p className="text-center text-sm opacity-85 mt-1 mb-4">
               기준 시간: {requiredHours}시간 ({days}일 기준)
             </p>
@@ -594,8 +626,8 @@ export default function WorkHoursTracker() {
             </div>
             <div className="text-center text-sm mt-1">
               <span>
-                {workdDayVsRequiredDiffMinutes >= 0 ? "📈" : "📉"} 합산
-                초과/부족 시간 :{" "}
+                {workdDayVsRequiredDiffMinutes >= 0 ? "📈" : "📉"} 기대 대비
+                초과/미달 누적 시간 :{" "}
                 {workdDayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
                 {minutesToHHMM(Math.abs(workdDayVsRequiredDiffMinutes))}
               </span>
@@ -622,7 +654,7 @@ export default function WorkHoursTracker() {
               const weekend = isWeekend(year, month, day);
               const rec = records[day] ?? getDefaultRecord();
               const stat = dayStats[day];
-              const isToday = today.getDate() === day;
+              const isToday = isCurrentMonth && today.getDate() === day;
               const type = rec.type ?? "work";
               const isFullDay = type === "annual" || type === "holiday";
               const isHoliday = type === "holiday";
@@ -756,7 +788,7 @@ export default function WorkHoursTracker() {
                       ) : (
                         <span
                           className={`text-xs font-semibold px-1.5 py-0.5 rounded-lg ${
-                            stat.total >= 480
+                            stat.total >= avgDailyRequiredMinutes
                               ? "text-green-800 bg-green-50"
                               : "text-red-600 bg-red-50"
                           }`}
@@ -877,13 +909,134 @@ export default function WorkHoursTracker() {
                 </div>
               ))}
             </div>
+
+            <hr className="border-gray-200" />
+
             <div className="bg-gray-100 rounded-xl p-3 text-center">
               <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
-                합산 여유/부족 시간
+                월 계산법 여유/부족 시간
                 <span className="relative group cursor-default">
                   <Info size={12} className="text-gray-500" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed">
-                    {`결과가 존재하는 날은 ${workedDayCount}일이고 하루 8h 근무 시 합계 ${workedDayStandardHours}h 에서 누적 시간과 비교한 결과입니다.`}
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">평일 수</span>
+                      <span>{weekdayCount}일</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">하루 근무 가정 시간</span>
+                      <span>08:00</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">총 가정 시간</span>
+                      <span>{minutesToHHMM(weekdayStandardMinutes)}</span>
+                    </div>
+
+                    <div className="border-t border-gray-500 my-0.5" />
+
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">기준 시간</span>
+                      <span>{minutesToHHMM(requiredMinutes)}</span>
+                    </div>
+
+                    <div className="border-t border-gray-500 my-0.5" />
+
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">
+                        월 계산법 여유/부족 시간
+                      </span>
+                      <span>
+                        {weekdayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
+                        {minutesToHHMM(Math.abs(weekdayVsRequiredDiffMinutes))}
+                      </span>
+                    </div>
+                  </span>
+                </span>
+              </p>
+              <p
+                className={`text-xl font-bold ${
+                  weekdayVsRequiredDiffMinutes > 0
+                    ? "text-green-600"
+                    : weekdayVsRequiredDiffMinutes < 0
+                    ? "text-red-600"
+                    : "text-gray-900"
+                }`}
+              >
+                {weekdayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
+                {minutesToHHMM(Math.abs(weekdayVsRequiredDiffMinutes))}
+              </p>
+            </div>
+            <div className="bg-gray-100 rounded-xl p-3 text-center">
+              <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                하루 기대 시간
+                <span className="relative group cursor-default">
+                  <Info size={12} className="text-gray-500" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">기준 시간</span>
+                      <span>{minutesToHHMM(requiredMinutes)}</span>
+                    </div>
+                    <div className="border-t border-gray-500 my-0.5" />
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">평일 수</span>
+                      <span>{weekdayCount}일</span>
+                    </div>
+                    <div className="border-t border-gray-500 my-0.5" />
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">
+                        하루 기대 시간 (올림)
+                      </span>
+                      <span>{minutesToHHMM(avgDailyRequiredMinutes)}</span>
+                    </div>
+                  </span>
+                </span>
+              </p>
+              <p className={`text-xl font-bold`}>
+                {minutesToHHMM(avgDailyRequiredMinutes)}
+              </p>
+            </div>
+            <div className="bg-gray-100 rounded-xl p-3 text-center">
+              <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                기대 대비 초과/미달 누적 시간
+                <span className="relative group cursor-default">
+                  <Info size={12} className="text-gray-500" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">누적 시간</span>
+                      <span>{minutesToHHMM(totalMinutes)}</span>
+                    </div>
+
+                    <div className="border-t border-gray-500 my-0.5" />
+
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">기준 시간</span>
+                      <span>{minutesToHHMM(requiredMinutes)}</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">결과 존재일 수</span>
+                      <span>{workedDayCount}일</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">평일 수</span>
+                      <span>{weekdayCount}일</span>
+                    </div>
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">
+                        누적 기대 시간 (올림)
+                      </span>
+                      <span>{minutesToHHMM(workedDayExpectedMinutes)}</span>
+                    </div>
+
+                    <div className="border-t border-gray-500 my-0.5" />
+
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">
+                        기대 대비 초과/미달 누적 시간
+                      </span>
+                      <span>
+                        {workdDayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
+                        {minutesToHHMM(Math.abs(workdDayVsRequiredDiffMinutes))}
+                      </span>
+                    </div>
                   </span>
                 </span>
               </p>
@@ -900,39 +1053,6 @@ export default function WorkHoursTracker() {
                 {minutesToHHMM(Math.abs(workdDayVsRequiredDiffMinutes))}
               </p>
             </div>
-            <button
-              onClick={() => setShowWeekdayCard((v) => !v)}
-              className="w-full flex items-center justify-center gap-1 py-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              {showWeekdayCard ? "▲ 접기" : "▼ 더보기"}
-            </button>
-            {showWeekdayCard && (
-              <div className="flex flex-col gap-3">
-                <div className="bg-gray-100 rounded-xl p-3 text-center">
-                  <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
-                    월 계산법 이득/손해 시간
-                    <span className="relative group cursor-default">
-                      <Info size={12} className="text-gray-500" />
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 w-48 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 leading-relaxed">
-                        {`${monthNames[month]}의 평일은 ${weekdayCount}일이고 하루 8h 근무 시 합계 ${weekdayStandardHours}h 에서 기준 시간과 비교한 결과입니다.`}
-                      </span>
-                    </span>
-                  </p>
-                  <p
-                    className={`text-xl font-bold ${
-                      weekdayVsRequiredDiffMinutes > 0
-                        ? "text-green-600"
-                        : weekdayVsRequiredDiffMinutes < 0
-                        ? "text-red-600"
-                        : "text-gray-900"
-                    }`}
-                  >
-                    {weekdayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
-                    {minutesToHHMM(Math.abs(weekdayVsRequiredDiffMinutes))}
-                  </p>
-                </div>
-              </div>
-            )}
           </div>
         </div>
 
