@@ -208,7 +208,7 @@ const GUIDE_CONTENT = {
     //위로 추가
     {
       version: "v1.1",
-      date: "2026-02-20",
+      date: "2026-02-21",
       changes: ["하루 기대 시간 개념 적용"],
     },
     {
