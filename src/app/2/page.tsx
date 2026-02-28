@@ -140,8 +140,8 @@ function isBreakSufficient(
   const e = timeToMinutes(end);
   if (s === null || e === null || e <= s) return true;
 
-  const workedMins = e - s;
   const breakMins = calcBreakMinutes(start!, end!, breaks);
+  const workedMins = e - s - breakMins;
 
   if (workedMins >= 720) return breakMins >= 90;
   if (workedMins >= 480) return breakMins >= 60;
