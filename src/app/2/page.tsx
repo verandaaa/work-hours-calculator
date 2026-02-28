@@ -131,6 +131,24 @@ function calcBreakMinutes(
   }, 0);
 }
 
+function isBreakSufficient(
+  start: string | undefined,
+  end: string | undefined,
+  breaks: BreakTime[]
+): boolean {
+  const s = timeToMinutes(start);
+  const e = timeToMinutes(end);
+  if (s === null || e === null || e <= s) return true;
+
+  const workedMins = e - s;
+  const breakMins = calcBreakMinutes(start!, end!, breaks);
+
+  if (workedMins >= 720) return breakMins >= 90;
+  if (workedMins >= 480) return breakMins >= 60;
+  if (workedMins >= 240) return breakMins >= 30;
+  return true;
+}
+
 // ─── 스타일 상수 ──────────────────────────────────────────────────────────────
 
 const timeFieldSx = {
@@ -197,11 +215,11 @@ const GUIDE_CONTENT = {
     },
     {
       title: "휴게시간 관리",
-      desc: "▼ 버튼으로 휴게시간을 펼쳐 추가/수정/삭제할 수 있어요. 기본값과 다를 경우 파란 점으로 표시됩니다.",
+      desc: "▼ 버튼으로 휴게시간을 펼쳐 추가/수정/삭제할 수 있어요. 기본값과 다를 경우 파란 점이 표시됩니다. 근무시간 4시간당 휴게시간 30분을 충족하지 못하면 빨간 점이 표시됩니다.",
     },
     {
       title: "합산 기준",
-      desc: "실근로 + 기타(연차·반차·반반차·휴일) 시간을 합산해 월 기준 시간 달성 여부를 계산합니다.",
+      desc: "실근로 & 기타 시간을 합산해 월 기준 시간 달성 여부를 계산합니다.",
     },
     {
       title: "데이터 저장",
@@ -213,7 +231,7 @@ const GUIDE_CONTENT = {
     {
       version: "v1.2",
       date: "2026-02-28",
-      changes: ["연장 한도 시간 표시 추가"],
+      changes: ["연장 한도 시간 표시 추가", "법정 휴게시간 미충족 표시 추가"],
     },
     {
       version: "v1.1",
@@ -798,9 +816,21 @@ export default function WorkHoursTracker() {
                                     b.end !== DEFAULT_BREAKS[i].end
                                   : true
                               );
-                            return isModified ? (
-                              <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 bg-blue-400 rounded-full" />
-                            ) : null;
+                            const sufficient = isBreakSufficient(
+                              rec.start,
+                              rec.end,
+                              dayBreaks
+                            );
+
+                            if (!sufficient)
+                              return (
+                                <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 bg-red-400 rounded-full" />
+                              );
+                            if (isModified)
+                              return (
+                                <span className="absolute -top-0.5 -right-1 w-1.5 h-1.5 bg-blue-400 rounded-full" />
+                              );
+                            return null;
                           })()}
                         </button>
                       ) : (
