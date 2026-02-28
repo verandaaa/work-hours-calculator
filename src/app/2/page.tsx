@@ -74,7 +74,11 @@ function getDaysInMonth(y: number, m: number) {
 }
 
 function getRequiredHours(y: number, m: number) {
-  return Math.floor((40 * getDaysInMonth(y, m)) / 7);
+  return Math.floor(40 * (getDaysInMonth(y, m) / 7));
+}
+
+function getLimitedHours(y: number, m: number) {
+  return Math.floor((getDaysInMonth(y, m) / 7) * 12);
 }
 
 function timeToMinutes(t?: string) {
@@ -206,6 +210,11 @@ const GUIDE_CONTENT = {
   ],
   patches: [
     //위로 추가
+    {
+      version: "v1.2",
+      date: "2026-02-28",
+      changes: ["연장 한도 시간 표시 추가"],
+    },
     {
       version: "v1.1",
       date: "2026-02-21",
@@ -424,6 +433,7 @@ export default function WorkHoursTracker() {
 
   const days = getDaysInMonth(year, month);
   const requiredHours = getRequiredHours(year, month);
+  const limitedHours = getLimitedHours(year, month);
 
   const setField = (
     day: number,
@@ -550,6 +560,7 @@ export default function WorkHoursTracker() {
 
   //대시보드 추가용
   const requiredMinutes = requiredHours * 60;
+  const limitedMinutes = limitedHours * 60;
 
   const weekdayCount = useMemo(() => {
     let count = 0;
@@ -895,7 +906,7 @@ export default function WorkHoursTracker() {
                   ),
                 },
                 {
-                  label: remainMinutes > 0 ? "잔여 시간" : "초과 시간",
+                  label: remainMinutes > 0 ? "잔여 시간" : "연장 시간",
                   value: minutesToHHMM(Math.abs(remainMinutes)),
                   cn: "text-red-600",
                   tooltip: (
@@ -911,12 +922,9 @@ export default function WorkHoursTracker() {
                       <div className="border-t border-gray-500 my-0.5" />
                       <div className="flex justify-between gap-3">
                         <span className="text-gray-300">
-                          {remainMinutes > 0 ? "잔여" : "초과"} 시간
+                          {remainMinutes > 0 ? "잔여" : "연장"} 시간
                         </span>
-                        <span>
-                          {remainMinutes > 0 ? "" : "+"}
-                          {minutesToHHMM(Math.abs(remainMinutes))}
-                        </span>
+                        <span>{minutesToHHMM(Math.abs(remainMinutes))}</span>
                       </div>
                     </>
                   ),
@@ -1188,6 +1196,33 @@ export default function WorkHoursTracker() {
               >
                 {workdDayVsRequiredDiffMinutes >= 0 ? "+" : "-"}
                 {minutesToHHMM(Math.abs(workdDayVsRequiredDiffMinutes))}
+              </p>
+            </div>
+
+            <hr className="border-gray-200" />
+
+            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
+              <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                연장 한도 시간
+                <span className="group cursor-default">
+                  <Info size={12} className="text-gray-500" />
+                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">월 일수</span>
+                      <span>{days}일</span>
+                    </div>
+
+                    <div className="border-t border-gray-500 my-0.5" />
+
+                    <div className="flex justify-between gap-3">
+                      <span className="text-gray-300">연장 한도 시간</span>
+                      <span>{minutesToHHMM(limitedMinutes)}</span>
+                    </div>
+                  </span>
+                </span>
+              </p>
+              <p className={`text-xl font-bold text-gray-900`}>
+                {minutesToHHMM(limitedMinutes)}
               </p>
             </div>
           </div>
