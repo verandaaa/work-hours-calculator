@@ -838,7 +838,7 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center items-center">
-                      {stat.total === 0 || weekend || isHoliday ? (
+                      {stat.total === 0 || weekend ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <span
