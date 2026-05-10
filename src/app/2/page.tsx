@@ -16,7 +16,7 @@ import { Info } from "lucide-react";
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
-const WEEKDAY_TYPES = [
+const WORK_TYPES = [
   { value: "work", label: "근무", bonus: 0 },
   { value: "annual", label: "연차", bonus: 480 },
   { value: "half", label: "반차", bonus: 240 },
@@ -24,17 +24,7 @@ const WEEKDAY_TYPES = [
   { value: "holiday", label: "휴일", bonus: 480 },
 ] as const;
 
-const WEEKEND_TYPES = [
-  { value: "weekend", label: "주말", bonus: 0 },
-  { value: "work", label: "근무", bonus: 0 },
-] as const;
-
-const ALL_TYPES = [
-  ...WEEKDAY_TYPES,
-  { value: "weekend", label: "주말", bonus: 0 },
-] as const;
-
-type WorkTypeValue = (typeof ALL_TYPES)[number]["value"];
+type WorkTypeValue = (typeof WORK_TYPES)[number]["value"];
 
 interface BreakTime {
   id: number;
@@ -55,17 +45,8 @@ const PREFIX = "2_";
 const STORAGE_KEY = `${PREFIX}result`;
 const DEFAULT_BREAKS: BreakTime[] = [{ id: 1, start: "12:00", end: "13:00" }];
 
-function getDefaultRecord(
-  y?: number,
-  m?: number,
-  d?: number
-): Partial<DayRecord> {
-  const isWknd =
-    y !== undefined && m !== undefined && d !== undefined && isWeekend(y, m, d);
-  return {
-    type: isWknd ? "weekend" : "work",
-    breaks: DEFAULT_BREAKS.map((b) => ({ ...b })),
-  };
+function getDefaultRecord(): Partial<DayRecord> {
+  return { type: "work", breaks: DEFAULT_BREAKS.map((b) => ({ ...b })) };
 }
 
 // ─── 유틸 ────────────────────────────────────────────────────────────────────
@@ -168,10 +149,6 @@ function isBreakSufficient(
   return true;
 }
 
-function getTypeInfo(type: WorkTypeValue) {
-  return ALL_TYPES.find((t) => t.value === type) ?? ALL_TYPES[0];
-}
-
 // ─── 스타일 상수 ──────────────────────────────────────────────────────────────
 
 const timeFieldSx = {
@@ -195,7 +172,6 @@ const SELECT_TYPE_STYLES: Record<
   half: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
   quarter: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
   holiday: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
-  weekend: { color: "#374151", bg: "transparent", border: "" },
 };
 
 const getSelectSx = (type: string) => {
@@ -235,7 +211,7 @@ const GUIDE_CONTENT = {
     },
     {
       title: "근무 유형 선택",
-      desc: "연차·반차·반반차·휴일 선택 시 자동으로 시간이 처리됩니다. 주말은 기본 '주말'로 표시되며, '근무'로 변경하면 입력할 수 있습니다.",
+      desc: "연차·반차·반반차·휴일 선택 시 자동으로 시간이 처리됩니다.",
     },
     {
       title: "휴게시간 관리",
@@ -251,14 +227,7 @@ const GUIDE_CONTENT = {
     },
   ],
   patches: [
-    {
-      version: "v1.3",
-      date: "2026-05-10",
-      changes: [
-        "주말 유형 드롭다운 추가 (주말/근무 선택)",
-        "대시보드에 주말 포함된 실근로 & 누적 시간 추가",
-      ],
-    },
+    //위로 추가
     {
       version: "v1.2",
       date: "2026-02-28",
@@ -484,13 +453,6 @@ export default function WorkHoursTracker() {
   const requiredHours = getRequiredHours(year, month);
   const limitedHours = getLimitedHours(year, month);
 
-  /** 해당 일의 effective type을 반환 (레코드 없으면 주말/평일 기본값) */
-  const getEffectiveType = (day: number): WorkTypeValue => {
-    const rec = records[day];
-    if (rec?.type) return rec.type;
-    return isWeekend(year, month, day) ? "weekend" : "work";
-  };
-
   const setField = (
     day: number,
     field: keyof DayRecord,
@@ -498,17 +460,13 @@ export default function WorkHoursTracker() {
   ) => {
     setRecords((prev) => ({
       ...prev,
-      [day]: {
-        ...getDefaultRecord(year, month, day),
-        ...prev[day],
-        [field]: value,
-      },
+      [day]: { ...getDefaultRecord(), ...prev[day], [field]: value },
     }));
   };
 
   const addBreak = (day: number) => {
     setRecords((prev) => {
-      const rec = prev[day] ?? getDefaultRecord(year, month, day);
+      const rec = prev[day] ?? getDefaultRecord();
       return {
         ...prev,
         [day]: {
@@ -561,9 +519,10 @@ export default function WorkHoursTracker() {
       { worked: number; bonus: number; total: number }
     > = {};
     for (let d = 1; d <= days; d++) {
-      const rec = records[d] ?? getDefaultRecord(year, month, d);
-      const type = rec.type ?? (isWeekend(year, month, d) ? "weekend" : "work");
-      const typeInfo = getTypeInfo(type);
+      const rec = records[d] ?? getDefaultRecord();
+      const typeInfo = WORK_TYPES.find(
+        (t) => t.value === (rec.type ?? "work")
+      )!;
       const start = timeToMinutes(rec.start);
       const end = timeToMinutes(rec.end);
       const rawWorked =
@@ -580,7 +539,7 @@ export default function WorkHoursTracker() {
       };
     }
     return stats;
-  }, [records, days, year, month]);
+  }, [records, days]);
 
   const bonusTypeCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -590,45 +549,24 @@ export default function WorkHoursTracker() {
       holiday: 0,
     };
     for (let d = 1; d <= days; d++) {
-      const type = getEffectiveType(d);
+      const type = (records[d] ?? getDefaultRecord()).type ?? "work";
       if (type in counts) counts[type]++;
     }
     return counts;
-  }, [records, days, year, month]);
+  }, [records, days]);
 
-  // 평일 기준으로만 집계 (주말 '근무' 타입은 별도)
-  const totalMinutes = useMemo(() => {
-    let sum = 0;
-    for (let d = 1; d <= days; d++) {
-      if (!isWeekend(year, month, d)) sum += dayStats[d].total;
-    }
-    return sum;
-  }, [dayStats, days, year, month]);
-
-  const actualWorkedMinutes = useMemo(() => {
-    let sum = 0;
-    for (let d = 1; d <= days; d++) {
-      if (!isWeekend(year, month, d)) sum += dayStats[d].worked;
-    }
-    return sum;
-  }, [dayStats, days, year, month]);
-
-  const bonusMinutes = useMemo(() => {
-    let sum = 0;
-    for (let d = 1; d <= days; d++) {
-      if (!isWeekend(year, month, d)) sum += dayStats[d].bonus;
-    }
-    return sum;
-  }, [dayStats, days, year, month]);
-
-  // 주말 중 '근무' 타입인 날의 실근로 시간
-  const weekendWorkedMinutes = useMemo(() => {
-    let sum = 0;
-    for (let d = 1; d <= days; d++) {
-      if (isWeekend(year, month, d)) sum += dayStats[d].worked;
-    }
-    return sum;
-  }, [dayStats, days, year, month]);
+  const totalMinutes = useMemo(
+    () => Object.values(dayStats).reduce((s, v) => s + v.total, 0),
+    [dayStats]
+  );
+  const actualWorkedMinutes = useMemo(
+    () => Object.values(dayStats).reduce((s, v) => s + v.worked, 0),
+    [dayStats]
+  );
+  const bonusMinutes = useMemo(
+    () => Object.values(dayStats).reduce((s, v) => s + v.bonus, 0),
+    [dayStats]
+  );
 
   const totalHours = totalMinutes / 60;
   const remainMinutes = requiredHours * 60 - totalMinutes;
@@ -638,6 +576,7 @@ export default function WorkHoursTracker() {
     100
   );
 
+  //대시보드 추가용
   const requiredMinutes = requiredHours * 60;
   const limitedMinutes = limitedHours * 60;
 
@@ -648,20 +587,15 @@ export default function WorkHoursTracker() {
     }
     return count;
   }, [year, month, days]);
-
   const weekdayStandardMinutes = weekdayCount * 8 * 60;
   const weekdayVsRequiredDiffMinutes = weekdayStandardMinutes - requiredMinutes;
 
   const avgDailyRequiredMinutes = Math.ceil(requiredMinutes / weekdayCount);
 
-  const workedDayCount = useMemo(() => {
-    let count = 0;
-    for (let d = 1; d <= days; d++) {
-      if (!isWeekend(year, month, d) && dayStats[d].total > 0) count++;
-    }
-    return count;
-  }, [dayStats, days, year, month]);
-
+  const workedDayCount = useMemo(
+    () => Object.values(dayStats).filter((s) => s.total > 0).length,
+    [dayStats]
+  );
   const workedDayExpectedMinutes = Math.ceil(
     requiredMinutes * (workedDayCount / weekdayCount)
   );
@@ -689,7 +623,7 @@ export default function WorkHoursTracker() {
       <div className="min-h-screen bg-gray-100 px-[6px] py-2">
         <div className="max-w-md mx-auto flex flex-col gap-4">
           {/* 헤더 */}
-          <div className="relative bg-blue-600 rounded-2xl px-7 py-6 text-white shadow-lg">
+          <div className="bg-blue-600 rounded-2xl px-7 py-6 text-white shadow-lg">
             <div className="flex items-center justify-between mb-1">
               <button
                 onClick={goToPrevMonth}
@@ -761,13 +695,12 @@ export default function WorkHoursTracker() {
             {Array.from({ length: days }, (_, i) => i + 1).map((day) => {
               const label = getDayLabel(year, month, day);
               const weekend = isWeekend(year, month, day);
-              const rec = records[day] ?? getDefaultRecord(year, month, day);
+              const rec = records[day] ?? getDefaultRecord();
               const stat = dayStats[day];
               const isToday = isCurrentMonth && today.getDate() === day;
-              const type = getEffectiveType(day);
+              const type = rec.type ?? "work";
               const isFullDay = type === "annual" || type === "holiday";
-              const isWeekendType = type === "weekend";
-              const isLocked = isFullDay || isWeekendType;
+              const isHoliday = type === "holiday";
               const isExpanded = expandedDay === day;
               const dayBreaks = rec.breaks ?? DEFAULT_BREAKS;
               const dayTextCn =
@@ -778,12 +711,9 @@ export default function WorkHoursTracker() {
                   : "text-gray-900";
               const rowBg = isToday
                 ? "bg-blue-50"
-                : weekend && isWeekendType
+                : weekend
                 ? "bg-gray-50"
                 : "bg-white";
-
-              // 해당 행에 보여줄 유형 옵션
-              const typeOptions = weekend ? WEEKEND_TYPES : WEEKDAY_TYPES;
 
               return (
                 <div key={day} className={`border-b border-gray-200 ${rowBg}`}>
@@ -801,7 +731,7 @@ export default function WorkHoursTracker() {
                       </span>
                     </div>
                     <div className="flex justify-center">
-                      {isLocked ? (
+                      {weekend || isFullDay ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <TimeField
@@ -816,7 +746,7 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center">
-                      {isLocked ? (
+                      {weekend || isFullDay ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <TimeField
@@ -829,45 +759,47 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center">
-                      <Select
-                        value={type}
-                        onChange={(e: SelectChangeEvent) => {
-                          const newType = e.target.value as WorkTypeValue;
-                          const newIsLocked =
-                            newType === "annual" ||
-                            newType === "holiday" ||
-                            newType === "weekend";
-                          if (newIsLocked) setExpandedDay(null);
-                          setRecords((prev) => ({
-                            ...prev,
-                            [day]: {
-                              ...getDefaultRecord(year, month, day),
-                              ...prev[day],
-                              type: newType,
-                              ...(newIsLocked
-                                ? {
-                                    start: undefined,
-                                    end: undefined,
-                                    breaks: DEFAULT_BREAKS.map((b) => ({
-                                      ...b,
-                                    })),
-                                  }
-                                : {}),
-                            },
-                          }));
-                        }}
-                        size="small"
-                        sx={getSelectSx(type)}
-                      >
-                        {typeOptions.map((t) => (
-                          <MenuItem key={t.value} value={t.value}>
-                            {t.label}
-                          </MenuItem>
-                        ))}
-                      </Select>
+                      {weekend ? (
+                        <span className="text-xs text-gray-400">-</span>
+                      ) : (
+                        <Select
+                          value={type}
+                          onChange={(e: SelectChangeEvent) => {
+                            const newType = e.target.value as WorkTypeValue;
+                            const newIsFullDay =
+                              newType === "annual" || newType === "holiday";
+                            if (newIsFullDay) setExpandedDay(null);
+                            setRecords((prev) => ({
+                              ...prev,
+                              [day]: {
+                                ...getDefaultRecord(),
+                                ...prev[day],
+                                type: newType,
+                                ...(newIsFullDay
+                                  ? {
+                                      start: undefined,
+                                      end: undefined,
+                                      breaks: DEFAULT_BREAKS.map((b) => ({
+                                        ...b,
+                                      })),
+                                    }
+                                  : {}),
+                              },
+                            }));
+                          }}
+                          size="small"
+                          sx={getSelectSx(type)}
+                        >
+                          {WORK_TYPES.map((t) => (
+                            <MenuItem key={t.value} value={t.value}>
+                              {t.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      )}
                     </div>
                     <div className="flex justify-center">
-                      {!isLocked ? (
+                      {!weekend && !isFullDay ? (
                         <button
                           onClick={() =>
                             setExpandedDay(isExpanded ? null : day)
@@ -906,7 +838,7 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center items-center">
-                      {stat.total === 0 ? (
+                      {stat.total === 0 || weekend ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <span
@@ -1233,7 +1165,7 @@ export default function WorkHoursTracker() {
                   </span>
                 </span>
               </p>
-              <p className="text-xl font-bold">
+              <p className={`text-xl font-bold`}>
                 {minutesToHHMM(avgDailyRequiredMinutes)}
               </p>
             </div>
@@ -1319,76 +1251,15 @@ export default function WorkHoursTracker() {
                   </span>
                 </span>
               </p>
-              <p className="text-xl font-bold text-gray-900">
+              <p className={`text-xl font-bold text-gray-900`}>
                 {minutesToHHMM(limitedMinutes)}
               </p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="relative bg-gray-100 rounded-xl p-3 text-center">
-                <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
-                  주말 포함 실근로 시간
-                  <span className="group cursor-default">
-                    <Info size={12} className="text-gray-500" />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-[150px] bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-300">실근로 시간</span>
-                        <span>{minutesToHHMM(actualWorkedMinutes)}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-300">주말 실근로 시간</span>
-                        <span>{minutesToHHMM(weekendWorkedMinutes)}</span>
-                      </div>
-                      <div className="border-t border-gray-500 my-0.5" />
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-300">실근로 합계</span>
-                        <span>
-                          {minutesToHHMM(
-                            actualWorkedMinutes + weekendWorkedMinutes
-                          )}
-                        </span>
-                      </div>
-                    </span>
-                  </span>
-                </p>
-                <p className="text-xl font-bold text-orange-600">
-                  {minutesToHHMM(actualWorkedMinutes + weekendWorkedMinutes)}
-                </p>
-              </div>
-              <div className="relative bg-gray-100 rounded-xl p-3 text-center">
-                <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
-                  주말 포함 누적 시간
-                  <span className="group cursor-default">
-                    <Info size={12} className="text-gray-500" />
-                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-[150px] bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-300">누적 시간</span>
-                        <span>{minutesToHHMM(totalMinutes)}</span>
-                      </div>
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-300">주말 실근로 시간</span>
-                        <span>{minutesToHHMM(weekendWorkedMinutes)}</span>
-                      </div>
-                      <div className="border-t border-gray-500 my-0.5" />
-                      <div className="flex justify-between gap-3">
-                        <span className="text-gray-300">누적 합계</span>
-                        <span>
-                          {minutesToHHMM(totalMinutes + weekendWorkedMinutes)}
-                        </span>
-                      </div>
-                    </span>
-                  </span>
-                </p>
-                <p className="text-xl font-bold text-green-600">
-                  {minutesToHHMM(totalMinutes + weekendWorkedMinutes)}
-                </p>
-              </div>
             </div>
           </div>
         </div>
 
         {/* 하단 버튼 영역 */}
-        <div className="max-w-md mx-auto bg-white rounded-2xl px-6 py-4 shadow-sm flex gap-3 mt-4">
+        <div className="bg-white rounded-2xl px-6 py-4 shadow-sm flex gap-3 mt-4">
           {[
             { label: "📋 사용법", tab: "usage" },
             { label: "🚀 업데이트", tab: "patch" },
