@@ -12,7 +12,7 @@ import { TimeField } from "@mui/x-date-pickers/TimeField";
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs, { Dayjs } from "dayjs";
-import { Info } from "lucide-react";
+import { Info, Settings } from "lucide-react";
 
 // ─── 상수 ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +43,7 @@ type MonthRecords = Record<number, DayRecord>;
 
 const PREFIX = "2_";
 const STORAGE_KEY = `${PREFIX}result`;
+const SETTINGS_KEY = `${PREFIX}settings`;
 const DEFAULT_BREAKS: BreakTime[] = [{ id: 1, start: "12:00", end: "13:00" }];
 
 function getDefaultRecord(): Partial<DayRecord> {
@@ -66,6 +67,21 @@ function loadRecords(y: number, m: number): MonthRecords {
 function saveRecords(y: number, m: number, records: MonthRecords) {
   try {
     localStorage.setItem(storageKey(y, m), JSON.stringify(records));
+  } catch {}
+}
+
+function loadSettings(): { showWeekend: boolean } {
+  try {
+    const raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : { showWeekend: false };
+  } catch {
+    return { showWeekend: false };
+  }
+}
+
+function saveSettings(settings: { showWeekend: boolean }) {
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch {}
 }
 
@@ -229,6 +245,15 @@ const GUIDE_CONTENT = {
   patches: [
     //위로 추가
     {
+      version: "v1.3",
+      date: "2026-05-10",
+      changes: [
+        "설정 메뉴 추가 (톱니바퀴 아이콘)",
+        "주말 표시/숨기기 토글 설정 추가",
+        "대시보드에 주말 포함된 실근로 & 누적 시간 추가",
+      ],
+    },
+    {
       version: "v1.2",
       date: "2026-02-28",
       changes: ["연장 한도 시간 표시 추가", "법정 휴게시간 미충족 표시 추가"],
@@ -351,6 +376,47 @@ function BaseModal({
   );
 }
 
+function SettingsModal({
+  onClose,
+  showWeekend,
+  onToggleWeekend,
+}: {
+  onClose: () => void;
+  showWeekend: boolean;
+  onToggleWeekend: () => void;
+}) {
+  return (
+    <BaseModal title="⚙️ 설정" onClose={onClose}>
+      <div className="bg-gray-50 rounded-xl px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-gray-700">주말 표시</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              주말에도 출퇴근 시간을 입력할 수 있어요.
+            </p>
+          </div>
+          {/* Toggle switch */}
+          <button
+            onClick={onToggleWeekend}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 focus:outline-none ${
+              showWeekend ? "bg-blue-600" : "bg-gray-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-md transition-transform duration-200 ${
+                showWeekend ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+      </div>
+      <p className="text-xs text-gray-400 px-1">
+        설정은 브라우저에 자동 저장됩니다.
+      </p>
+    </BaseModal>
+  );
+}
+
 function UsageModal({ onClose }: { onClose: () => void }) {
   return (
     <BaseModal title="📋 사용 설명서" onClose={onClose}>
@@ -428,14 +494,19 @@ export default function WorkHoursTracker() {
   const [records, setRecords] = useState<MonthRecords>({});
   const [expandedDay, setExpandedDay] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [showInfo, setShowInfo] = useState<"usage" | "patch" | null>(null);
+  const [showInfo, setShowInfo] = useState<
+    "usage" | "patch" | "settings" | null
+  >(null);
   const [showNewPatch, setShowNewPatch] = useState(false);
+  const [showWeekend, setShowWeekend] = useState(false);
 
   useEffect(() => {
     try {
       const seen = localStorage.getItem(PATCH_SEEN_KEY);
       if (!seen || seen < LATEST_PATCH_DATE) setShowNewPatch(true);
     } catch {}
+    const s = loadSettings();
+    setShowWeekend(s.showWeekend);
   }, []);
 
   useEffect(() => {
@@ -448,6 +519,12 @@ export default function WorkHoursTracker() {
     if (!mounted) return;
     saveRecords(year, month, records);
   }, [records, year, month, mounted]);
+
+  const handleToggleWeekend = () => {
+    const next = !showWeekend;
+    setShowWeekend(next);
+    saveSettings({ showWeekend: next });
+  };
 
   const days = getDaysInMonth(year, month);
   const requiredHours = getRequiredHours(year, month);
@@ -555,18 +632,37 @@ export default function WorkHoursTracker() {
     return counts;
   }, [records, days]);
 
-  const totalMinutes = useMemo(
-    () => Object.values(dayStats).reduce((s, v) => s + v.total, 0),
-    [dayStats]
-  );
-  const actualWorkedMinutes = useMemo(
-    () => Object.values(dayStats).reduce((s, v) => s + v.worked, 0),
-    [dayStats]
-  );
-  const bonusMinutes = useMemo(
-    () => Object.values(dayStats).reduce((s, v) => s + v.bonus, 0),
-    [dayStats]
-  );
+  // 평일 기준으로만 집계 (주말은 별도)
+  const totalMinutes = useMemo(() => {
+    let sum = 0;
+    for (let d = 1; d <= days; d++) {
+      if (!isWeekend(year, month, d)) sum += dayStats[d].total;
+    }
+    return sum;
+  }, [dayStats, days, year, month]);
+  const actualWorkedMinutes = useMemo(() => {
+    let sum = 0;
+    for (let d = 1; d <= days; d++) {
+      if (!isWeekend(year, month, d)) sum += dayStats[d].worked;
+    }
+    return sum;
+  }, [dayStats, days, year, month]);
+  const bonusMinutes = useMemo(() => {
+    let sum = 0;
+    for (let d = 1; d <= days; d++) {
+      if (!isWeekend(year, month, d)) sum += dayStats[d].bonus;
+    }
+    return sum;
+  }, [dayStats, days, year, month]);
+
+  // 주말 실근로 시간
+  const weekendWorkedMinutes = useMemo(() => {
+    let sum = 0;
+    for (let d = 1; d <= days; d++) {
+      if (isWeekend(year, month, d)) sum += dayStats[d].worked;
+    }
+    return sum;
+  }, [dayStats, days, year, month]);
 
   const totalHours = totalMinutes / 60;
   const remainMinutes = requiredHours * 60 - totalMinutes;
@@ -623,7 +719,15 @@ export default function WorkHoursTracker() {
       <div className="min-h-screen bg-gray-100 px-[6px] py-2">
         <div className="max-w-md mx-auto flex flex-col gap-4">
           {/* 헤더 */}
-          <div className="bg-blue-600 rounded-2xl px-7 py-6 text-white shadow-lg">
+          <div className="relative bg-blue-600 rounded-2xl px-7 py-6 text-white shadow-lg">
+            {/* 설정 아이콘 - 파란 카드 오른쪽 위 */}
+            <button
+              onClick={() => setShowInfo("settings")}
+              className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full hover:bg-white/20 transition-colors text-white/70 hover:text-white"
+              title="설정"
+            >
+              <Settings size={16} />
+            </button>
             <div className="flex items-center justify-between mb-1">
               <button
                 onClick={goToPrevMonth}
@@ -700,7 +804,6 @@ export default function WorkHoursTracker() {
               const isToday = isCurrentMonth && today.getDate() === day;
               const type = rec.type ?? "work";
               const isFullDay = type === "annual" || type === "holiday";
-              const isHoliday = type === "holiday";
               const isExpanded = expandedDay === day;
               const dayBreaks = rec.breaks ?? DEFAULT_BREAKS;
               const dayTextCn =
@@ -714,6 +817,9 @@ export default function WorkHoursTracker() {
                 : weekend
                 ? "bg-gray-50"
                 : "bg-white";
+
+              // 주말이고 showWeekend가 꺼져있으면 기존 - 표시
+              const weekendLocked = weekend && !showWeekend;
 
               return (
                 <div key={day} className={`border-b border-gray-200 ${rowBg}`}>
@@ -731,7 +837,7 @@ export default function WorkHoursTracker() {
                       </span>
                     </div>
                     <div className="flex justify-center">
-                      {weekend || isFullDay ? (
+                      {weekendLocked || isFullDay ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <TimeField
@@ -746,7 +852,7 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center">
-                      {weekend || isFullDay ? (
+                      {weekendLocked || isFullDay ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <TimeField
@@ -759,7 +865,7 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center">
-                      {weekend ? (
+                      {weekendLocked ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <Select
@@ -788,6 +894,7 @@ export default function WorkHoursTracker() {
                             }));
                           }}
                           size="small"
+                          disabled={weekend}
                           sx={getSelectSx(type)}
                         >
                           {WORK_TYPES.map((t) => (
@@ -799,7 +906,7 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center">
-                      {!weekend && !isFullDay ? (
+                      {!weekendLocked && !isFullDay ? (
                         <button
                           onClick={() =>
                             setExpandedDay(isExpanded ? null : day)
@@ -838,7 +945,7 @@ export default function WorkHoursTracker() {
                       )}
                     </div>
                     <div className="flex justify-center items-center">
-                      {stat.total === 0 || weekend ? (
+                      {stat.total === 0 || weekendLocked ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <span
@@ -1085,6 +1192,74 @@ export default function WorkHoursTracker() {
               ))}
             </div>
 
+            {/* 주말 누적 / 주말 포함 총 누적 - 주말 표시 옵션 켜졌을 때만 */}
+            {showWeekend && (
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative bg-gray-100 rounded-xl p-3 text-center">
+                  <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                    주말 포함 실근로 시간
+                    <span className="group cursor-default">
+                      <Info size={12} className="text-gray-500" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-[150px] bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-gray-300">실근로 시간</span>
+                          <span>{minutesToHHMM(actualWorkedMinutes)}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-gray-300">
+                            주말 실근로 시간
+                          </span>
+                          <span>{minutesToHHMM(weekendWorkedMinutes)}</span>
+                        </div>
+                        <div className="border-t border-gray-500 my-0.5" />
+                        <div className="flex justify-between gap-3">
+                          <span className="text-gray-300">실근로 합계</span>
+                          <span>
+                            {minutesToHHMM(
+                              actualWorkedMinutes + weekendWorkedMinutes
+                            )}
+                          </span>
+                        </div>
+                      </span>
+                    </span>
+                  </p>
+                  <p className={`text-xl font-bold text-orange-600`}>
+                    {minutesToHHMM(actualWorkedMinutes + weekendWorkedMinutes)}
+                  </p>
+                </div>
+                <div className="relative bg-gray-100 rounded-xl p-3 text-center">
+                  <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                    주말 포함 누적 시간
+                    <span className="group cursor-default">
+                      <Info size={12} className="text-gray-500" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-[150px] bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-gray-300">누적 시간</span>
+                          <span>{minutesToHHMM(totalMinutes)}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-gray-300">
+                            주말 실근로 시간
+                          </span>
+                          <span>{minutesToHHMM(weekendWorkedMinutes)}</span>
+                        </div>
+                        <div className="border-t border-gray-500 my-0.5" />
+                        <div className="flex justify-between gap-3">
+                          <span className="text-gray-300">누적 합계</span>
+                          <span>
+                            {minutesToHHMM(totalMinutes + weekendWorkedMinutes)}
+                          </span>
+                        </div>
+                      </span>
+                    </span>
+                  </p>
+                  <p className={`text-xl font-bold text-green-600`}>
+                    {minutesToHHMM(totalMinutes + weekendWorkedMinutes)}
+                  </p>
+                </div>
+              </div>
+            )}
+
             <hr className="border-gray-200" />
 
             <div className="relative bg-gray-100 rounded-xl p-3 text-center">
@@ -1281,6 +1456,13 @@ export default function WorkHoursTracker() {
         )}
         {showInfo === "patch" && (
           <PatchModal onClose={() => setShowInfo(null)} />
+        )}
+        {showInfo === "settings" && (
+          <SettingsModal
+            onClose={() => setShowInfo(null)}
+            showWeekend={showWeekend}
+            onToggleWeekend={handleToggleWeekend}
+          />
         )}
       </div>
     </LocalizationProvider>
