@@ -24,7 +24,13 @@ const WORK_TYPES = [
   { value: "holiday", label: "휴일", bonus: 480 },
 ] as const;
 
+const WEEKEND_TYPES = [
+  { value: "weekend", label: "주말" },
+  { value: "work", label: "근무" },
+] as const;
+
 type WorkTypeValue = (typeof WORK_TYPES)[number]["value"];
+type WeekendTypeValue = (typeof WEEKEND_TYPES)[number]["value"];
 
 interface BreakTime {
   id: number;
@@ -36,6 +42,7 @@ interface DayRecord {
   start?: string;
   end?: string;
   type?: WorkTypeValue;
+  weekendType?: WeekendTypeValue;
   breaks?: BreakTime[];
 }
 
@@ -172,6 +179,7 @@ const SELECT_TYPE_STYLES: Record<
   half: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
   quarter: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
   holiday: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
+  weekend: { color: "#374151", bg: "transparent", border: "" },
 };
 
 const getSelectSx = (type: string) => {
@@ -211,7 +219,7 @@ const GUIDE_CONTENT = {
     },
     {
       title: "근무 유형 선택",
-      desc: "연차·반차·반반차·휴일 선택 시 자동으로 시간이 처리됩니다.",
+      desc: "연차·반차·반반차·휴일 선택 시 자동으로 시간이 처리됩니다. 주말은 기본 '주말'로 표시되며, '근무'로 변경하면 입력할 수 있습니다.",
     },
     {
       title: "휴게시간 관리",
@@ -227,7 +235,14 @@ const GUIDE_CONTENT = {
     },
   ],
   patches: [
-    //위로 추가
+    {
+      version: "v1.3",
+      date: "2026-05-17",
+      changes: [
+        "주말 유형 드롭다운 추가 (주말/근무 선택)",
+        "주말을 '근무'로 변경하면 출퇴근 입력 가능",
+      ],
+    },
     {
       version: "v1.2",
       date: "2026-02-28",
@@ -520,6 +535,15 @@ export default function WorkHoursTracker() {
     > = {};
     for (let d = 1; d <= days; d++) {
       const rec = records[d] ?? getDefaultRecord();
+      const weekend = isWeekend(year, month, d);
+      const weekendType = rec.weekendType ?? "weekend";
+
+      // 주말이면서 "주말" 유형이면 0
+      if (weekend && weekendType === "weekend") {
+        stats[d] = { worked: 0, bonus: 0, total: 0 };
+        continue;
+      }
+
       const typeInfo = WORK_TYPES.find(
         (t) => t.value === (rec.type ?? "work")
       )!;
@@ -539,7 +563,7 @@ export default function WorkHoursTracker() {
       };
     }
     return stats;
-  }, [records, days]);
+  }, [records, days, year, month]);
 
   const bonusTypeCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -549,11 +573,15 @@ export default function WorkHoursTracker() {
       holiday: 0,
     };
     for (let d = 1; d <= days; d++) {
-      const type = (records[d] ?? getDefaultRecord()).type ?? "work";
+      const rec = records[d] ?? getDefaultRecord();
+      const weekend = isWeekend(year, month, d);
+      const weekendType = rec.weekendType ?? "weekend";
+      if (weekend && weekendType === "weekend") continue;
+      const type = rec.type ?? "work";
       if (type in counts) counts[type]++;
     }
     return counts;
-  }, [records, days]);
+  }, [records, days, year, month]);
 
   const totalMinutes = useMemo(
     () => Object.values(dayStats).reduce((s, v) => s + v.total, 0),
@@ -576,7 +604,6 @@ export default function WorkHoursTracker() {
     100
   );
 
-  //대시보드 추가용
   const requiredMinutes = requiredHours * 60;
   const limitedMinutes = limitedHours * 60;
 
@@ -699,8 +726,10 @@ export default function WorkHoursTracker() {
               const stat = dayStats[day];
               const isToday = isCurrentMonth && today.getDate() === day;
               const type = rec.type ?? "work";
+              const weekendType = rec.weekendType ?? "weekend";
+              const isWeekendOff = weekend && weekendType === "weekend";
               const isFullDay = type === "annual" || type === "holiday";
-              const isHoliday = type === "holiday";
+              const isLocked = isWeekendOff || isFullDay;
               const isExpanded = expandedDay === day;
               const dayBreaks = rec.breaks ?? DEFAULT_BREAKS;
               const dayTextCn =
@@ -711,7 +740,7 @@ export default function WorkHoursTracker() {
                   : "text-gray-900";
               const rowBg = isToday
                 ? "bg-blue-50"
-                : weekend
+                : isWeekendOff
                 ? "bg-gray-50"
                 : "bg-white";
 
@@ -730,8 +759,9 @@ export default function WorkHoursTracker() {
                         ({label})
                       </span>
                     </div>
+                    {/* 출근 */}
                     <div className="flex justify-center">
-                      {weekend || isFullDay ? (
+                      {isLocked ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <TimeField
@@ -745,8 +775,9 @@ export default function WorkHoursTracker() {
                         />
                       )}
                     </div>
+                    {/* 퇴근 */}
                     <div className="flex justify-center">
-                      {weekend || isFullDay ? (
+                      {isLocked ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <TimeField
@@ -758,9 +789,44 @@ export default function WorkHoursTracker() {
                         />
                       )}
                     </div>
+                    {/* 유형 */}
                     <div className="flex justify-center">
                       {weekend ? (
-                        <span className="text-xs text-gray-400">-</span>
+                        <Select
+                          value={weekendType}
+                          onChange={(e: SelectChangeEvent) => {
+                            const newWeekendType = e.target
+                              .value as WeekendTypeValue;
+                            setRecords((prev) => ({
+                              ...prev,
+                              [day]: {
+                                ...getDefaultRecord(),
+                                ...prev[day],
+                                weekendType: newWeekendType,
+                                ...(newWeekendType === "weekend"
+                                  ? {
+                                      start: undefined,
+                                      end: undefined,
+                                      type: "work",
+                                      breaks: DEFAULT_BREAKS.map((b) => ({
+                                        ...b,
+                                      })),
+                                    }
+                                  : {}),
+                              },
+                            }));
+                            if (newWeekendType === "weekend")
+                              setExpandedDay(null);
+                          }}
+                          size="small"
+                          sx={getSelectSx(weekendType)}
+                        >
+                          {WEEKEND_TYPES.map((t) => (
+                            <MenuItem key={t.value} value={t.value}>
+                              {t.label}
+                            </MenuItem>
+                          ))}
+                        </Select>
                       ) : (
                         <Select
                           value={type}
@@ -798,8 +864,9 @@ export default function WorkHoursTracker() {
                         </Select>
                       )}
                     </div>
+                    {/* 휴게 */}
                     <div className="flex justify-center">
-                      {!weekend && !isFullDay ? (
+                      {!isLocked ? (
                         <button
                           onClick={() =>
                             setExpandedDay(isExpanded ? null : day)
@@ -837,8 +904,9 @@ export default function WorkHoursTracker() {
                         <span className="text-xs text-gray-400">-</span>
                       )}
                     </div>
+                    {/* 결과 */}
                     <div className="flex justify-center items-center">
-                      {stat.total === 0 || weekend ? (
+                      {stat.total === 0 || isWeekendOff ? (
                         <span className="text-xs text-gray-400">-</span>
                       ) : (
                         <span
@@ -854,7 +922,7 @@ export default function WorkHoursTracker() {
                     </div>
                   </div>
 
-                  {isExpanded && (
+                  {isExpanded && !isLocked && (
                     <div className="px-3 pb-3 pt-2 bg-gray-50 border-t border-dashed border-gray-200">
                       <p className="text-[11px] font-semibold text-gray-400 mb-2 mt-1">
                         ☕ 휴게시간
