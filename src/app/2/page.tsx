@@ -619,10 +619,13 @@ export default function WorkHoursTracker() {
 
   const avgDailyRequiredMinutes = Math.ceil(requiredMinutes / weekdayCount);
 
-  const workedDayCount = useMemo(
-    () => Object.values(dayStats).filter((s) => s.total > 0).length,
-    [dayStats]
-  );
+  const workedDayCount = useMemo(() => {
+    let count = 0;
+    for (let d = 1; d <= days; d++) {
+      if (!isWeekend(year, month, d) && dayStats[d]?.total > 0) count++;
+    }
+    return count;
+  }, [dayStats, days, year, month]);
   const workedDayExpectedMinutes = Math.ceil(
     requiredMinutes * (workedDayCount / weekdayCount)
   );
@@ -911,7 +914,9 @@ export default function WorkHoursTracker() {
                       ) : (
                         <span
                           className={`text-xs font-semibold px-1.5 py-0.5 rounded-lg ${
-                            stat.total >= avgDailyRequiredMinutes
+                            weekend
+                              ? "text-blue-700 bg-blue-50"
+                              : stat.total >= avgDailyRequiredMinutes
                               ? "text-green-800 bg-green-50"
                               : "text-red-600 bg-red-50"
                           }`}
@@ -1255,7 +1260,7 @@ export default function WorkHoursTracker() {
                       <span>{minutesToHHMM(requiredMinutes)}</span>
                     </div>
                     <div className="flex justify-between gap-3">
-                      <span className="text-gray-300">결과 존재일 수</span>
+                      <span className="text-gray-300">평일 결과 존재일 수</span>
                       <span>{workedDayCount}일</span>
                     </div>
                     <div className="flex justify-between gap-3">
