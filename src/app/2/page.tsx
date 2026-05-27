@@ -236,6 +236,15 @@ const GUIDE_CONTENT = {
   ],
   patches: [
     {
+      version: "v1.4",
+      date: "2026-05-27",
+      changes: [
+        "연장 시간 분리",
+        "실근로 시간 + 기타 시간 = 누적 시간 => 기준 시간 이상 필수",
+        "실근로 시간 - 기준 시간 = 연장 시간 => 연장 한도 시간 이하 필수",
+      ],
+    },
+    {
       version: "v1.3",
       date: "2026-05-17",
       changes: [
@@ -606,6 +615,7 @@ export default function WorkHoursTracker() {
 
   const requiredMinutes = requiredHours * 60;
   const limitedMinutes = limitedHours * 60;
+  const overtimeMinutes = Math.max(0, actualWorkedMinutes - requiredMinutes);
 
   const weekdayCount = useMemo(() => {
     let count = 0;
@@ -1009,7 +1019,7 @@ export default function WorkHoursTracker() {
                   ),
                 },
                 {
-                  label: remainMinutes > 0 ? "잔여 시간" : "연장 시간",
+                  label: remainMinutes >= 0 ? "잔여 시간" : "초과 시간",
                   value: minutesToHHMM(Math.abs(remainMinutes)),
                   cn: "text-red-600",
                   tooltip: (
@@ -1025,7 +1035,7 @@ export default function WorkHoursTracker() {
                       <div className="border-t border-gray-500 my-0.5" />
                       <div className="flex justify-between gap-3">
                         <span className="text-gray-300">
-                          {remainMinutes > 0 ? "잔여" : "연장"} 시간
+                          {remainMinutes >= 0 ? "잔여" : "초과"} 시간
                         </span>
                         <span>{minutesToHHMM(Math.abs(remainMinutes))}</span>
                       </div>
@@ -1304,29 +1314,65 @@ export default function WorkHoursTracker() {
 
             <hr className="border-gray-200" />
 
-            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
-              <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
-                연장 한도 시간
-                <span className="group cursor-default">
-                  <Info size={12} className="text-gray-500" />
-                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-52 bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
-                    <div className="flex justify-between gap-3">
-                      <span className="text-gray-300">월 일수</span>
-                      <span>{days}일</span>
-                    </div>
-
-                    <div className="border-t border-gray-500 my-0.5" />
-
-                    <div className="flex justify-between gap-3">
-                      <span className="text-gray-300">연장 한도 시간</span>
-                      <span>{minutesToHHMM(limitedMinutes)}</span>
-                    </div>
-                  </span>
-                </span>
-              </p>
-              <p className={`text-xl font-bold text-gray-900`}>
-                {minutesToHHMM(limitedMinutes)}
-              </p>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                {
+                  label: "연장 한도 시간",
+                  value: minutesToHHMM(limitedMinutes),
+                  cn: "text-gray-900",
+                  tooltip: (
+                    <>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-300">월 일수</span>
+                        <span>{days}일</span>
+                      </div>
+                      <div className="border-t border-gray-500 my-0.5" />
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-300">연장 한도 시간</span>
+                        <span>{minutesToHHMM(limitedMinutes)}</span>
+                      </div>
+                    </>
+                  ),
+                },
+                {
+                  label: "연장 시간",
+                  value: minutesToHHMM(overtimeMinutes),
+                  cn: "text-gray-900",
+                  tooltip: (
+                    <>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-300">실근로 시간</span>
+                        <span>{minutesToHHMM(actualWorkedMinutes)}</span>
+                      </div>
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-300">기준 시간</span>
+                        <span>{minutesToHHMM(requiredMinutes)}</span>
+                      </div>
+                      <div className="border-t border-gray-500 my-0.5" />
+                      <div className="flex justify-between gap-3">
+                        <span className="text-gray-300">연장 시간</span>
+                        <span>{minutesToHHMM(overtimeMinutes)}</span>
+                      </div>
+                    </>
+                  ),
+                },
+              ].map(({ label, value, cn, tooltip }) => (
+                <div
+                  key={label}
+                  className="relative bg-gray-100 rounded-xl p-3 text-center"
+                >
+                  <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
+                    {label}
+                    <span className="group cursor-default">
+                      <Info size={12} className="text-gray-500" />
+                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 -mb-2 w-[150px] bg-gray-700 text-white text-[10px] rounded-lg px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10 flex flex-col gap-1">
+                        {tooltip}
+                      </span>
+                    </span>
+                  </p>
+                  <p className={`text-xl font-bold ${cn}`}>{value}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
