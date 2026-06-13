@@ -1188,7 +1188,7 @@ export default function WorkHoursTracker() {
             })}
           </div>
 
-          <div className="bg-white rounded-2xl px-6 py-5 shadow-sm flex flex-col gap-3">
+          <div className="bg-white rounded-2xl px-3 py-5 shadow-sm flex flex-col gap-3">
             <div className="grid grid-cols-4 gap-3">
               {[
                 {
@@ -1727,7 +1727,7 @@ export default function WorkHoursTracker() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl px-6 py-4 shadow-sm grid grid-cols-2 gap-3 mt-4">
+        <div className="bg-white rounded-2xl px-3 py-4 shadow-sm grid grid-cols-2 gap-3 mt-4">
           {[
             { label: "📋 사용법", onClick: () => setShowInfo("usage") },
             { label: "🚀 업데이트", onClick: () => setShowInfo("patch") },
