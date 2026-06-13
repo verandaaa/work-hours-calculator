@@ -129,12 +129,17 @@ function calcBreakMinutes(
   breaks: BreakTime[]
 ): number {
   const s = timeToMinutes(start);
-  const e = timeToMinutes(end);
-  if (s === null || e === null || e <= s) return 0;
+  let e = timeToMinutes(end);
+  if (s === null || e === null) return 0;
+  if (e < s) e += 1440;
+  if (e <= s) return 0;
   return breaks.reduce((sum, b) => {
-    const bs = timeToMinutes(b.start);
-    const be = timeToMinutes(b.end);
-    if (bs === null || be === null || be <= bs) return sum;
+    const bsRaw = timeToMinutes(b.start);
+    const beRaw = timeToMinutes(b.end);
+    if (bsRaw === null || beRaw === null) return sum;
+    const bs = bsRaw < s ? bsRaw + 1440 : bsRaw;
+    const be = beRaw < s ? beRaw + 1440 : beRaw;
+    if (be <= bs) return sum;
     return sum + Math.max(0, Math.min(e, be) - Math.max(s, bs));
   }, 0);
 }
@@ -145,16 +150,16 @@ function isBreakSufficient(
   breaks: BreakTime[]
 ): boolean {
   const s = timeToMinutes(start);
-  const e = timeToMinutes(end);
-  if (s === null || e === null || e <= s) return true;
+  let e = timeToMinutes(end);
+  if (s === null || e === null) return true;
+  if (e < s) e += 1440;
+  if (e <= s) return true;
 
   const breakMins = calcBreakMinutes(start!, end!, breaks);
   const workedMins = e - s - breakMins;
 
-  if (workedMins >= 720) return breakMins >= 90;
-  if (workedMins >= 480) return breakMins >= 60;
-  if (workedMins >= 240) return breakMins >= 30;
-  return true;
+  const requiredBreak = Math.floor(workedMins / 240) * 30;
+  return breakMins >= requiredBreak;
 }
 
 // ─── 스타일 상수 ──────────────────────────────────────────────────────────────
@@ -250,6 +255,7 @@ const GUIDE_CONTENT = {
       changes: [
         "'휴일근무' 유형 추가 (실근로 시간 입력 + 기타 시간 8시간 합산)",
         "유형 드롭다운 너비 조정으로 표시 개선",
+        "퇴근이 0시 이후인 경우 계산 못하는 오류 수정",
       ],
     },
     {
@@ -576,7 +582,9 @@ export default function WorkHoursTracker() {
       const start = timeToMinutes(rec.start);
       const end = timeToMinutes(rec.end);
       const rawWorked =
-        start !== null && end !== null && end > start ? end - start : 0;
+        start !== null && end !== null
+          ? (end < start ? end + 1440 : end) - start
+          : 0;
       const breakMins =
         rawWorked > 0 && rec.start && rec.end
           ? calcBreakMinutes(rec.start, rec.end, rec.breaks ?? [])
