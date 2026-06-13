@@ -1459,9 +1459,7 @@ export default function WorkHoursTracker() {
                         </span>
                         <span className="text-white">최초 기준 시간</span>
                       </span>
-                      <span className="font-semibold">
-                        {minutesToHHMM(requiredMinutes)}
-                      </span>
+                      <span>{minutesToHHMM(requiredMinutes)}</span>
                     </div>
 
                     <div className="border-t border-gray-500 my-0.5" />
@@ -1520,9 +1518,7 @@ export default function WorkHoursTracker() {
                         </span>
                         <span className="text-white">기준 시간</span>
                       </span>
-                      <span className="font-semibold">
-                        {minutesToHHMM(workdayRequiredMinutes)}
-                      </span>
+                      <span>{minutesToHHMM(workdayRequiredMinutes)}</span>
                     </div>
 
                     <div className="border-t border-gray-500 my-0.5" />
@@ -1534,7 +1530,7 @@ export default function WorkHoursTracker() {
                         </span>
                         <span className="text-white">근무일 수</span>
                       </span>
-                      <span className="font-semibold">{workdayCount}일</span>
+                      <span>{workdayCount}일</span>
                     </div>
 
                     <div className="border-t border-gray-500 my-0.5" />
@@ -1579,9 +1575,7 @@ export default function WorkHoursTracker() {
                         </span>
                         <span className="text-white">누적 시간</span>
                       </span>
-                      <span className="font-semibold">
-                        {minutesToHHMM(adjustedTotalMinutes)}
-                      </span>
+                      <span>{minutesToHHMM(adjustedTotalMinutes)}</span>
                     </div>
 
                     <div className="border-t border-gray-500 my-0.5" />
