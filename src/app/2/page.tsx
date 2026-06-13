@@ -1130,7 +1130,7 @@ export default function WorkHoursTracker() {
                   </div>
 
                   {isExpanded && !isLocked && (
-                    <div className="px-3 pb-3 pt-2 bg-gray-50 border-t border-dashed border-gray-200">
+                    <div className="px-6 pb-3 pt-2 bg-gray-50 border-t border-dashed border-gray-200">
                       <p className="text-[11px] font-semibold text-gray-400 mb-2 mt-1">
                         ☕ 휴게시간
                       </p>
@@ -1188,15 +1188,9 @@ export default function WorkHoursTracker() {
             })}
           </div>
 
-          <div className="bg-white rounded-2xl px-3 py-5 shadow-sm flex flex-col gap-3">
-            <div className="grid grid-cols-4 gap-3">
+          <div className="bg-white rounded-2xl px-6 py-5 shadow-sm flex flex-col gap-3">
+            <div className="grid grid-cols-3 gap-3">
               {[
-                {
-                  label: "전체 일 수",
-                  value: days,
-                  unit: "일",
-                  dates: null,
-                },
                 {
                   label: "평일 수",
                   value: weekdayCount,
@@ -1727,7 +1721,7 @@ export default function WorkHoursTracker() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl px-3 py-4 shadow-sm grid grid-cols-2 gap-3 mt-4">
+        <div className="bg-white rounded-2xl px-6 py-4 shadow-sm grid grid-cols-2 gap-3 mt-4">
           {[
             { label: "📋 사용법", onClick: () => setShowInfo("usage") },
             { label: "🚀 업데이트", onClick: () => setShowInfo("patch") },
