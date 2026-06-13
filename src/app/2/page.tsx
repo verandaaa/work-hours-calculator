@@ -22,11 +22,12 @@ const WORK_TYPES = [
   { value: "half", label: "반차", bonus: 240 },
   { value: "quarter", label: "반반차", bonus: 120 },
   { value: "holiday", label: "휴일", bonus: 480 },
+  { value: "holidayWork", label: "휴일근무", bonus: 480 },
 ] as const;
 
 const WEEKEND_TYPES = [
-  { value: "weekend", label: "주말" },
-  { value: "work", label: "근무" },
+  { value: "weekend", label: "휴일" },
+  { value: "work", label: "휴일근무" },
 ] as const;
 
 type WorkTypeValue = (typeof WORK_TYPES)[number]["value"];
@@ -180,13 +181,15 @@ const SELECT_TYPE_STYLES: Record<
   quarter: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
   holiday: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
   weekend: { color: "#374151", bg: "transparent", border: "" },
+  holidayWork: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
+  weekendWork: { color: "#0369a1", bg: "#f8fbff", border: "#93c5fd" },
 };
 
 const getSelectSx = (type: string) => {
   const s = SELECT_TYPE_STYLES[type] ?? SELECT_TYPE_STYLES.work;
   return {
     width: 64,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 500,
     borderRadius: "6px",
     color: s.color,
@@ -194,7 +197,13 @@ const getSelectSx = (type: string) => {
     "&.MuiInputBase-root": { margin: "0 2px" },
     "& .MuiSelect-select": {
       padding: "5px 8px",
-      paddingRight: "24px !important",
+      paddingLeft: "6px !important",
+      paddingRight: "6px !important",
+      textAlign: "center",
+      lineHeight: 1.5,
+    },
+    "& svg": {
+      display: "none",
     },
     "& .MuiSelect-icon": { right: 2, color: s.color },
     "& .MuiOutlinedInput-notchedOutline": s.border
@@ -219,7 +228,7 @@ const GUIDE_CONTENT = {
     },
     {
       title: "근무 유형 선택",
-      desc: "연차·반차·반반차·휴일 선택 시 자동으로 시간이 처리됩니다. 주말은 기본 '주말'로 표시되며, '근무'로 변경하면 입력할 수 있습니다.",
+      desc: "연차·반차·반반차·휴일 선택 시 자동으로 시간이 처리됩니다. 주말은 기본 '휴일'로 표시되며, '휴일근무'로 변경하면 입력할 수 있습니다.",
     },
     {
       title: "휴게시간 관리",
@@ -236,6 +245,14 @@ const GUIDE_CONTENT = {
   ],
   patches: [
     {
+      version: "v1.5",
+      date: "2026-06-13",
+      changes: [
+        "'휴일근무' 유형 추가 (실근로 시간 입력 + 기타 시간 8시간 합산)",
+        "유형 드롭다운 너비 조정으로 표시 개선",
+      ],
+    },
+    {
       version: "v1.4",
       date: "2026-05-27",
       changes: [
@@ -248,7 +265,7 @@ const GUIDE_CONTENT = {
       version: "v1.3",
       date: "2026-05-17",
       changes: [
-        "주말 유형 드롭다운 추가 (주말/근무 선택)",
+        "주말 유형 드롭다운 추가 (휴일/근무 선택)",
         "주말을 '근무'로 변경하면 출퇴근 입력 가능",
       ],
     },
@@ -547,7 +564,7 @@ export default function WorkHoursTracker() {
       const weekend = isWeekend(year, month, d);
       const weekendType = rec.weekendType ?? "weekend";
 
-      // 주말이면서 "주말" 유형이면 0
+      // 주말이면서 "휴일" 유형이면 0
       if (weekend && weekendType === "weekend") {
         stats[d] = { worked: 0, bonus: 0, total: 0 };
         continue;
@@ -580,6 +597,7 @@ export default function WorkHoursTracker() {
       half: 0,
       quarter: 0,
       holiday: 0,
+      holidayWork: 0,
     };
     for (let d = 1; d <= days; d++) {
       const rec = records[d] ?? getDefaultRecord();
@@ -832,7 +850,9 @@ export default function WorkHoursTracker() {
                               setExpandedDay(null);
                           }}
                           size="small"
-                          sx={getSelectSx(weekendType)}
+                          sx={getSelectSx(
+                            weekendType === "work" ? "weekendWork" : weekendType
+                          )}
                         >
                           {WEEKEND_TYPES.map((t) => (
                             <MenuItem key={t.value} value={t.value}>
@@ -924,8 +944,8 @@ export default function WorkHoursTracker() {
                       ) : (
                         <span
                           className={`text-xs font-semibold px-1.5 py-0.5 rounded-lg ${
-                            weekend
-                              ? "text-blue-700 bg-blue-50"
+                            weekend || type === "holidayWork"
+                              ? "text-amber-700 bg-amber-50"
                               : stat.total >= avgDailyRequiredMinutes
                               ? "text-green-800 bg-green-50"
                               : "text-red-600 bg-red-50"
@@ -1108,7 +1128,9 @@ export default function WorkHoursTracker() {
                         },
                         {
                           label: "휴일",
-                          count: bonusTypeCounts.holiday,
+                          count:
+                            bonusTypeCounts.holiday +
+                            bonusTypeCounts.holidayWork,
                           mins: 480,
                         },
                       ].map(({ label, count, mins }) => (
