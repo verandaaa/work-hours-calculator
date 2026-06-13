@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Select,
   MenuItem,
@@ -256,6 +256,7 @@ const GUIDE_CONTENT = {
         "'휴일근무' 유형 추가 (실근로 시간 입력 + 기타 시간 8시간 합산)",
         "유형 드롭다운 너비 조정으로 표시 개선",
         "퇴근이 0시 이후인 경우 계산 못하는 오류 수정",
+        "내보내기/가져오기 기능 추가",
       ],
     },
     {
@@ -420,6 +421,86 @@ function UsageModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+function exportAllData() {
+  const data: Record<string, unknown> = {};
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key && key.startsWith(STORAGE_KEY + "-")) {
+      try {
+        data[key] = JSON.parse(localStorage.getItem(key) ?? "{}");
+      } catch {
+        data[key] = {};
+      }
+    }
+  }
+  const json = JSON.stringify({ version: 1, data }, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  a.download = `work-hours-${dateStr}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function ImportConfirmModal({
+  monthCount,
+  onConfirm,
+  onClose,
+}: {
+  monthCount: number;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm"
+        onClick={onClose}
+      />
+      <div className="relative w-full max-w-md bg-white rounded-t-2xl sm:rounded-2xl shadow-xl flex flex-col">
+        <div className="flex items-center justify-between px-5 pt-5 pb-3">
+          <p className="text-sm font-bold text-gray-700">데이터 가져오기</p>
+          <button
+            onClick={onClose}
+            className="text-gray-300 hover:text-gray-500 text-lg leading-none"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="px-5 pb-2">
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+            <p className="text-xs font-bold text-red-600 mb-1">
+              ⚠️ 전체 덮어쓰기
+            </p>
+            <p className="text-xs text-red-700 leading-relaxed">
+              기존에 저장된 모든 데이터가 삭제되고 가져온 데이터로 교체됩니다.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-3 px-5 py-4">
+          <button
+            onClick={onClose}
+            className="flex-1 text-sm font-medium text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-xl py-2.5 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={onConfirm}
+            className="flex-1 text-sm font-semibold text-white bg-red-500 hover:bg-red-600 rounded-xl py-2.5 transition-colors"
+          >
+            덮어쓰기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PatchModal({ onClose }: { onClose: () => void }) {
   return (
     <BaseModal title="🚀 업데이트" onClose={onClose}>
@@ -477,6 +558,46 @@ export default function WorkHoursTracker() {
   const [mounted, setMounted] = useState(false);
   const [showInfo, setShowInfo] = useState<"usage" | "patch" | null>(null);
   const [showNewPatch, setShowNewPatch] = useState(false);
+  const [importPayload, setImportPayload] = useState<Record<
+    string,
+    unknown
+  > | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string);
+        if (parsed.version === 1 && parsed.data) {
+          setImportPayload(parsed.data);
+        } else {
+          alert("올바르지 않은 파일입니다.");
+        }
+      } catch {
+        alert("올바르지 않은 파일입니다.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImportConfirm = () => {
+    if (!importPayload) return;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(STORAGE_KEY + "-")) keysToRemove.push(key);
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    Object.entries(importPayload).forEach(([k, v]) => {
+      localStorage.setItem(k, JSON.stringify(v));
+    });
+    setImportPayload(null);
+    setRecords(loadRecords(year, month));
+  };
 
   useEffect(() => {
     try {
@@ -1408,19 +1529,38 @@ export default function WorkHoursTracker() {
         </div>
 
         {/* 하단 버튼 영역 */}
-        <div className="bg-white rounded-2xl px-6 py-4 shadow-sm flex gap-3 mt-4">
+        <div className="bg-white rounded-2xl px-6 py-4 shadow-sm grid grid-cols-2 gap-3 mt-4">
           {[
-            { label: "📋 사용법", tab: "usage" },
-            { label: "🚀 업데이트", tab: "patch" },
-          ].map(({ label, tab }) => (
+            { label: "📋 사용법", onClick: () => setShowInfo("usage") },
+            { label: "🚀 업데이트", onClick: () => setShowInfo("patch") },
+          ].map(({ label, onClick }) => (
             <button
-              key={tab}
-              onClick={() => setShowInfo(tab as "usage" | "patch")}
-              className="flex-1 text-sm font-medium text-gray-500 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 rounded-xl py-2.5 transition-colors"
+              key={label}
+              onClick={onClick}
+              className="text-sm font-medium text-gray-500 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 rounded-xl py-2.5 transition-colors"
             >
               {label}
             </button>
           ))}
+          <button
+            onClick={exportAllData}
+            className="text-sm font-medium text-gray-500 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 rounded-xl py-2.5 transition-colors"
+          >
+            📤 내보내기
+          </button>
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-sm font-medium text-gray-500 hover:text-blue-600 bg-gray-100 hover:bg-blue-50 rounded-xl py-2.5 transition-colors"
+          >
+            📥 가져오기
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
         </div>
         {showNewPatch && (
           <NewPatchModal onClose={() => setShowNewPatch(false)} />
@@ -1430,6 +1570,13 @@ export default function WorkHoursTracker() {
         )}
         {showInfo === "patch" && (
           <PatchModal onClose={() => setShowInfo(null)} />
+        )}
+        {importPayload && (
+          <ImportConfirmModal
+            monthCount={Object.keys(importPayload).length}
+            onConfirm={handleImportConfirm}
+            onClose={() => setImportPayload(null)}
+          />
         )}
       </div>
     </LocalizationProvider>
