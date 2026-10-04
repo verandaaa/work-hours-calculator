@@ -250,6 +250,14 @@ const GUIDE_CONTENT = {
   ],
   patches: [
     {
+      version: "v1.5.1",
+      date: "2026-10-05",
+      changes: [
+        "사용 설명서 주의사항에 비공식 도구 안내 문구 추가",
+        "통계 카드 좌우 패딩 조정",
+      ],
+    },
+    {
       version: "v1.5",
       date: "2026-06-13",
       changes: [
@@ -295,7 +303,9 @@ const GUIDE_CONTENT = {
   ],
 };
 
-const LATEST_PATCH_DATE = GUIDE_CONTENT.patches[0].date;
+const LATEST_PATCH_DATE =
+  GUIDE_CONTENT.patches.find((p) => p.version.split(".").length < 3)?.date ??
+  GUIDE_CONTENT.patches[0].date;
 const PATCH_SEEN_KEY = `${PREFIX}patchSeenDate`;
 
 function NewPatchModal({ onClose }: { onClose: () => void }) {
@@ -406,8 +416,9 @@ function UsageModal({ onClose }: { onClose: () => void }) {
       <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
         <p className="text-xs font-bold text-amber-600 mb-1">⚠️ 주의사항</p>
         <p className="text-xs text-amber-700 leading-relaxed">
-          본 페이지는 근무 시간 계산을 보조하기 위한 도구입니다. 실제 근태
-          기록은 반드시 네이버웍스 시스템과 대조하여 확인해 주세요.
+          본 페이지는 근무 시간 계산을 보조하기 위해 제작되었습니다. 실제 근태
+          기록은 반드시 네이버웍스 시스템과 대조하여 확인해 주세요. 또한 비공식
+          도구로, 최신 공식 근태 계산과 100% 일치하지 않을 수 있습니다.
         </p>
       </div>
       {GUIDE_CONTENT.usage.map((item, i) => (
@@ -1212,7 +1223,7 @@ export default function WorkHoursTracker() {
               ].map(({ label, value, unit, dates }) => (
                 <div
                   key={label}
-                  className="relative bg-gray-100 rounded-xl p-3 text-center"
+                  className="relative bg-gray-100 rounded-xl px-2 py-3 text-center"
                 >
                   <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                     {label}
@@ -1305,7 +1316,7 @@ export default function WorkHoursTracker() {
               ].map(({ label, value, cn, tooltip }) => (
                 <div
                   key={label}
-                  className="relative bg-gray-100 rounded-xl p-3 text-center"
+                  className="relative bg-gray-100 rounded-xl px-2 py-3 text-center"
                 >
                   <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                     {label}
@@ -1407,7 +1418,7 @@ export default function WorkHoursTracker() {
               ].map(({ label, value, cn, tooltip }) => (
                 <div
                   key={label}
-                  className="relative bg-gray-100 rounded-xl p-3 text-center"
+                  className="relative bg-gray-100 rounded-xl px-2 py-3 text-center"
                 >
                   <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                     {label}
@@ -1425,7 +1436,7 @@ export default function WorkHoursTracker() {
 
             <hr className="border-gray-200" />
 
-            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
+            <div className="relative bg-gray-100 rounded-xl px-2 py-3 text-center">
               <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                 월 계산법 여유/부족 시간
                 <span className="group cursor-default">
@@ -1505,7 +1516,7 @@ export default function WorkHoursTracker() {
                 {minutesToHHMM(Math.abs(weekdayVsRequiredDiffMinutes))}
               </p>
             </div>
-            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
+            <div className="relative bg-gray-100 rounded-xl px-2 py-3 text-center">
               <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                 하루 기대 시간
                 <span className="group cursor-default">
@@ -1562,7 +1573,7 @@ export default function WorkHoursTracker() {
                 {minutesToHHMM(avgDailyRequiredMinutes)}
               </p>
             </div>
-            <div className="relative bg-gray-100 rounded-xl p-3 text-center">
+            <div className="relative bg-gray-100 rounded-xl px-2 py-3 text-center">
               <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                 기대 대비 초과/미달 누적 시간
                 <span className="group cursor-default">
@@ -1697,7 +1708,7 @@ export default function WorkHoursTracker() {
               ].map(({ label, value, cn, tooltip }) => (
                 <div
                   key={label}
-                  className="relative bg-gray-100 rounded-xl p-3 text-center"
+                  className="relative bg-gray-100 rounded-xl px-2 py-3 text-center"
                 >
                   <p className="text-[11px] text-gray-500 mb-1 flex items-center justify-center gap-1">
                     {label}
