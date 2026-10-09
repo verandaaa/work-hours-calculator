@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 근무 시간 계산기
 
-## Getting Started
+출퇴근 시간을 기반으로 근무 시간을 확인할 수 있는 웹 계산기입니다.
 
-First, run the development server:
+🔗 [https://work-hours-calculator-delta.vercel.app](https://work-hours-calculator-delta.vercel.app)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 버전 1 — 주간 근무 시간 계산기 (`/1`)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+월~금 요일별 출퇴근 시간을 입력하여 이번 주 근무 시간을 계산합니다.  
+매주 새 주가 시작되면 데이터가 자동 초기화됩니다.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+### 기능
 
-## Learn More
+- 요일별 출근/퇴근 시간 입력
+- 근무 유형 선택: 근무 / 연차 / 반차 / 반반차 / 저녁 / 리프레시데이 / 휴일
+- 요일별 목표 대비 초과/부족 분 표시
+- 주간 합산 플러스/마이너스 표시
+- 이번 주 목표 시간 표시
+- 데이터 브라우저 로컬스토리지 저장
 
-To learn more about Next.js, take a look at the following resources:
+## 버전 2 — 월별 근무 시간 계산기 (`/2`)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+월 단위로 일자별 출퇴근 시간을 입력하여 이번 달 근무 시간 달성 현황을 추적합니다.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
+### 기능
 
-## Deploy on Vercel
+- 월별 전체 날짜 리스트에서 일자별 출퇴근 입력
+- 근무 유형 선택: 근무 / 연차 / 반차 / 반반차 / 휴일 / 휴일근무
+- 주말 유형 선택: 주말 / 주말근무 (주말근무 선택 시 출퇴근 입력 가능)
+- 휴게시간 관리: 기본 12:00~13:00, 자유롭게 추가/삭제 가능
+  - 파란 점: 기본값과 다를 경우
+  - 빨간 점: 법정 휴게 미충족 (근무 4시간당 30분)
+- 월 기준 시간 달성률 진행도 표시
+- 통계 대시보드: 기준 시간 / 잔여·초과 시간 / 실근로 / 기타 / 누적 시간
+- 연장 한도 시간 및 연장 시간 표시
+- 기대 대비 초과/미달 누적 시간
+- 데이터 내보내기 / 가져오기 (JSON)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 기술 스택
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+- **Framework**: Next.js (App Router)
+- **UI**: MUI, Tailwind CSS
+- **Date**: Day.js
+- **State**: Zustand (v1), React useState (v2)
+- **Deploy**: Vercel
