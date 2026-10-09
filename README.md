@@ -2,7 +2,7 @@
 
 출퇴근 시간을 기반으로 근무 시간을 확인할 수 있는 웹 계산기입니다.
 
-🔗 [https://work-hours-calculator-delta.vercel.app](https://work-hours-calculator-delta.vercel.app)
+🔗 [https://work-hours-calculator-navy.vercel.app/](https://work-hours-calculator-navy.vercel.app/)
 
 ---
 
