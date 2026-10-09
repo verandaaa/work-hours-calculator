@@ -4,6 +4,9 @@
 
 🔗 [https://work-hours-calculator-navy.vercel.app/](https://work-hours-calculator-navy.vercel.app/)
 
+<img width="1212" height="912" alt="image" src="https://github.com/user-attachments/assets/171ca338-7a95-41e6-87cc-9a5450130a6b" />
+
+
 ---
 
 ## 버전 1 — 주간 근무 시간 계산기 (`/1`)
@@ -19,6 +22,8 @@
 - 주간 합산 플러스/마이너스 표시
 - 이번 주 목표 시간 표시
 - 데이터 브라우저 로컬스토리지 저장
+
+<img width="1212" height="912" alt="image" src="https://github.com/user-attachments/assets/b77ce396-144e-4898-9bfc-7ffe16f5692b" />
 
 ## 버전 2 — 월별 근무 시간 계산기 (`/2`)
 
@@ -38,6 +43,11 @@
 - 기대 대비 초과/미달 누적 시간
 - 데이터 내보내기 / 가져오기 (JSON)
 
+<img width="1212" height="912" alt="image" src="https://github.com/user-attachments/assets/e5703462-59c6-44b5-be29-2f296564b24f" />
+
+<img width="1212" height="912" alt="image" src="https://github.com/user-attachments/assets/6110ce42-8e53-4ff8-beca-ebaeb69bc466" />
+
+
 ## 기술 스택
 
 - **Framework**: Next.js (App Router)
@@ -45,3 +55,4 @@
 - **Date**: Day.js
 - **State**: Zustand (v1), React useState (v2)
 - **Deploy**: Vercel
+
